@@ -244,10 +244,18 @@ class VoiceEngine:
         """
         try:
             with open(file_path, "rb") as audio_file:
+                # הוספת prompt להכוונה - מילים נפוצות בעברית לשליטה ב-Roblox
+                command_hints = (
+                    "קוביה, כדור, גליל, בית, עץ, מכונית, סלע, גדר, "
+                    "אדום, כחול, ירוק, צהוב, לבן, שחור, "
+                    "תוסיף, צור, בנה, תמחק, הגדל, הקטן, תצבע, "
+                    "גדול, קטן, ענק, זעיר"
+                )
                 response = self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language=self.language,
+                    prompt=command_hints,  # הכוונה לשפר דיוק
                     response_format="verbose_json"
                 )
 
@@ -371,12 +379,19 @@ class SimpleVoiceRecorder:
                     wf.setframerate(self.sample_rate)
                     wf.writeframes(b''.join(frames))
 
-            # זיהוי
+            # זיהוי עם prompt להכוונה
+            command_hints = (
+                "קוביה, כדור, גליל, בית, עץ, מכונית, סלע, גדר, "
+                "אדום, כחול, ירוק, צהוב, לבן, שחור, "
+                "תוסיף, צור, בנה, תמחק, הגדל, הקטן, תצבע, "
+                "גדול, קטן, ענק, זעיר"
+            )
             with open(temp_path, "rb") as audio_file:
                 response = self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
-                    language="he"
+                    language="he",
+                    prompt=command_hints
                 )
 
             os.unlink(temp_path)

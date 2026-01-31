@@ -12,6 +12,35 @@ from typing import Dict, Any, Optional
 from llm_builder import LLMBuilder
 
 
+def normalize_hebrew_text(text: str) -> str:
+    """
+    נרמול טקסט עברי - תיקון שגיאות נפוצות מזיהוי קולי.
+    """
+    # תיקונים נפוצים מזיהוי קולי
+    corrections = {
+        # שגיאות נפוצות בזיהוי
+        "בני": "בנה",  # לפעמים Whisper שומע "בני" במקום "בנה"
+        "תיצור": "צור",
+        "תבנה": "בנה",
+        "תשים": "שים",
+        # צבעים
+        "כחולא": "כחול",
+        "אדומא": "אדום",
+        "ירוקא": "ירוק",
+        # אובייקטים
+        "בייט": "בית",
+        "וויט": "בית",
+        "עיץ": "עץ",
+        "קוביא": "קוביה",
+    }
+
+    result = text
+    for wrong, correct in corrections.items():
+        result = result.replace(wrong, correct)
+
+    return result
+
+
 class DirectRobloxController:
     """
     שליטה ישירה ב-Roblox Studio דרך HTTP Server.
@@ -28,43 +57,106 @@ class DirectRobloxController:
 
     SERVER_URL = "http://127.0.0.1:8080"
 
-    # מיפוי צבעים עברית -> Roblox
+    # מיפוי צבעים עברית -> Roblox (עם וריאציות)
     COLORS = {
+        # אדום
         "אדום": "Bright red",
+        "אדומה": "Bright red",
+        "אדומים": "Bright red",
+        # כחול
         "כחול": "Bright blue",
+        "כחולה": "Bright blue",
+        "כחולים": "Bright blue",
+        # ירוק
         "ירוק": "Bright green",
+        "ירוקה": "Bright green",
+        "ירוקים": "Bright green",
+        # צהוב
         "צהוב": "Bright yellow",
+        "צהובה": "Bright yellow",
+        "צהובים": "Bright yellow",
+        # כתום
         "כתום": "Neon orange",
+        "כתומה": "Neon orange",
+        "כתומים": "Neon orange",
+        "תפוז": "Neon orange",
+        # סגול
         "סגול": "Bright violet",
+        "סגולה": "Bright violet",
+        "סגולים": "Bright violet",
+        # ורוד
         "ורוד": "Hot pink",
+        "ורודה": "Hot pink",
+        "ורודים": "Hot pink",
+        "ורוד": "Hot pink",
+        # לבן
         "לבן": "White",
+        "לבנה": "White",
+        "לבנים": "White",
+        # שחור
         "שחור": "Black",
+        "שחורה": "Black",
+        "שחורים": "Black",
+        # חום
         "חום": "Brown",
+        "חומה": "Brown",
+        "חומים": "Brown",
+        # תכלת
         "תכלת": "Cyan",
+        "תכולה": "Cyan",
+        # זהב
         "זהב": "Gold",
+        "זהובה": "Gold",
+        "מוזהב": "Gold",
+        # אפור
+        "אפור": "Medium stone grey",
+        "אפורה": "Medium stone grey",
     }
 
-    # מיפוי צורות
+    # מיפוי צורות (עם וריאציות)
     SHAPES = {
         "קוביה": "cube",
+        "קובייה": "cube",
+        "ריבוע": "cube",
         "כדור": "ball",
+        "עיגול": "ball",
         "גליל": "cylinder",
+        "צינור": "cylinder",
     }
 
-    # מודלים מוכנים מ-Toolbox (Asset IDs)
+    # מודלים מוכנים מ-Toolbox (Asset IDs) - עם הרבה וריאציות!
     READY_MODELS = {
+        # עצים
         "עץ": 4631364747,
         "עצים": 4631364747,
+        "אילן": 4631364747,
+        # בתים
         "בית": 7075284869,
         "בתים": 7075284869,
+        "ביתון": 7075284869,
+        "בניין": 7075284869,
+        # מכוניות
         "מכונית": 7086281035,
         "רכב": 7086281035,
+        "אוטו": 7086281035,
+        "מכוניות": 7086281035,
+        # ריהוט
         "כיסא": 8667289978,
+        "כסא": 8667289978,  # שגיאת כתיב נפוצה
+        "כיסאות": 8667289978,
         "שולחן": 7086407632,
+        "שולחנות": 7086407632,
         "מנורה": 7086431294,
+        "אור": 7086431294,
+        "פנס": 7086431294,
+        # גדרות
         "גדר": 7074904498,
+        "גדרות": 7074904498,
+        # סלעים
         "סלע": 5765284230,
         "אבן": 5765284230,
+        "סלעים": 5765284230,
+        "אבנים": 5765284230,
     }
 
     def __init__(self, on_status=None):
@@ -268,8 +360,10 @@ print("✅ נוספו {count} {model_name}!")
         Returns:
             dict עם success, action, message
         """
-        text_lower = text.lower()
-        self.on_status(f"מעבד: {text}")
+        # נרמול טקסט - תיקון שגיאות נפוצות
+        text_normalized = normalize_hebrew_text(text)
+        text_lower = text_normalized.lower()
+        self.on_status(f"מעבד: {text_normalized}")
 
         # זיהוי צבע
         color = None
@@ -285,51 +379,64 @@ print("✅ נוספו {count} {model_name}!")
                 shape = eng
                 break
 
-        # === זיהוי פעולה ===
+        # === שלב 1: זיהוי סוג הפקודה ===
+        # מילים שמציינות פעולת בנייה/יצירה
+        BUILD_WORDS = ["בנה", "בני", "צור", "תיצור", "תעשה", "תוסיף", "שים", "תשים", "הוסף"]
+        # מילים שמציינות פעולת עריכה (על הקיים)
+        RESIZE_BIGGER = ["הגדל", "תגדיל", "יותר גדול", "גדל"]
+        RESIZE_SMALLER = ["הקטן", "תקטין", "יותר קטן", "קטן"]
+        DELETE_WORDS = ["מחק", "תמחק", "הסר", "תסיר"]
+        COLOR_WORDS = ["צבע", "תצבע", "לצבוע"]
+        SELECT_WORDS = ["בחר", "תבחר", "select"]
 
-        # === בניית עולם שלם ===
-        if any(w in text_lower for w in ["עולם", "עולמות"]) and any(w in text_lower for w in ["בנה", "בני", "צור", "תעשה"]):
-            self.on_status("בונה עולם שלם!")
-            success = self.build_world()
-            if success:
-                return {"success": True, "action": "world", "message": "בניתי עולם שלם עם בית, עצים, סלעים, גדרות ומכונית!"}
+        # בדיקה האם זו פקודת בנייה
+        is_build_command = any(w in text_lower for w in BUILD_WORDS)
 
-        # === הוספת כמה מודלים ===
-        wants_multiple = any(w in text_lower for w in ["הרבה", "כמה", "מלא", "יער"])
-
-        if wants_multiple:
-            for model_name, asset_id in self.READY_MODELS.items():
-                if model_name in text_lower or (model_name == "עץ" and "יער" in text_lower):
-                    count = 10 if "יער" in text_lower else 5
-                    self.on_status(f"מוסיף {count} {model_name}...")
-                    success = self.add_multiple_models(model_name, count)
-                    if success:
-                        return {"success": True, "action": "multiple_models", "message": f"הוספתי {count} {model_name}!"}
-
-        # === בדיקה אם מבקשים מודל מוכן ===
-        wants_ready_model = any(w in text_lower for w in ["מוכן", "מוכנה", "מודל", "toolbox", "קיים", "קיימת"])
-
-        # אם מבקשים מודל מוכן - חפש באוסף המודלים
-        if wants_ready_model or any(w in text_lower for w in ["שים", "תשים"]):
-            for model_name, asset_id in self.READY_MODELS.items():
-                if model_name in text_lower:
-                    self.on_status(f"טוען מודל מוכן: {model_name}")
-                    success = self.load_ready_model(asset_id)
-                    if success:
-                        return {"success": True, "action": "ready_model", "message": f"הוספתי {model_name} מוכן!"}
-                    else:
-                        return {"success": False, "error": f"נכשל בטעינת מודל {model_name}"}
-
-        # בדיקה אם זו פקודה מורכבת שצריכה Claude
-        complex_keywords = ["בית", "מכונית", "עץ", "אצטדיון", "טירה", "רובוט", "פארק",
+        # מילים שמציינות אובייקט מורכב לבניה
+        COMPLEX_OBJECTS = ["בית", "מכונית", "עץ", "אצטדיון", "טירה", "רובוט", "פארק",
                           "גינה", "מגרש", "עיר", "כביש", "גשר", "ספינה", "מטוס",
-                          "חדר", "שולחן", "כיסא", "מיטה", "מנורה", "גדר", "הר", "תירה", "תותח"]
+                          "חדר", "שולחן", "כיסא", "מיטה", "מנורה", "גדר", "הר", "תירה", "תותח",
+                          "סלע", "אבן", "עצים", "בתים"]
 
-        is_complex = any(kw in text_lower for kw in complex_keywords)
+        has_complex_object = any(kw in text_lower for kw in COMPLEX_OBJECTS)
 
-        # אם יש מילת בנייה + מילה מורכבת = שלח ל-Claude
-        if is_complex and any(w in text_lower for w in ["בנה", "בני", "צור", "תעשה", "שים", "תוסיף"]):
-            if self.llm_builder:
+        # === שלב 2: אם זו פקודת בנייה - עדיפות לבנייה! ===
+        if is_build_command:
+            # === בניית עולם שלם ===
+            if any(w in text_lower for w in ["עולם", "עולמות"]):
+                self.on_status("בונה עולם שלם!")
+                success = self.build_world()
+                if success:
+                    return {"success": True, "action": "world", "message": "בניתי עולם שלם עם בית, עצים, סלעים, גדרות ומכונית!"}
+
+            # === הוספת כמה מודלים ===
+            wants_multiple = any(w in text_lower for w in ["הרבה", "כמה", "מלא", "יער"])
+
+            if wants_multiple:
+                for model_name, asset_id in self.READY_MODELS.items():
+                    if model_name in text_lower or (model_name == "עץ" and "יער" in text_lower):
+                        count = 10 if "יער" in text_lower else 5
+                        self.on_status(f"מוסיף {count} {model_name}...")
+                        success = self.add_multiple_models(model_name, count)
+                        if success:
+                            return {"success": True, "action": "multiple_models", "message": f"הוספתי {count} {model_name}!"}
+
+            # === בדיקה אם מבקשים מודל מוכן ===
+            wants_ready_model = any(w in text_lower for w in ["מוכן", "מוכנה", "מודל", "toolbox", "קיים", "קיימת"])
+
+            # אם מבקשים מודל מוכן - חפש באוסף המודלים
+            if wants_ready_model:
+                for model_name, asset_id in self.READY_MODELS.items():
+                    if model_name in text_lower:
+                        self.on_status(f"טוען מודל מוכן: {model_name}")
+                        success = self.load_ready_model(asset_id)
+                        if success:
+                            return {"success": True, "action": "ready_model", "message": f"הוספתי {model_name} מוכן!"}
+                        else:
+                            return {"success": False, "error": f"נכשל בטעינת מודל {model_name}"}
+
+            # === בנייה מורכבת עם Claude ===
+            if has_complex_object and self.llm_builder:
                 self.on_status(f"משתמש ב-Claude לפקודה מורכבת: {text}")
                 lua_code = self.llm_builder.generate_lua(text)
                 if lua_code:
@@ -340,25 +447,28 @@ print("✅ נוספו {count} {model_name}!")
                     else:
                         return {"success": False, "error": "נכשל בהרצת הקוד"}
 
-        # יצירת צורה פשוטה (קוביה, כדור, גליל)
-        if any(w in text_lower for w in ["תוסיף", "צור", "תיצור", "תעשה"]) and shape != "cube":
-            self.on_status(f"יוצר {shape} {color or ''}")
-            success = self.create_part(shape=shape, color=color)
-            if not success:
-                shape_map = {"cube": "Block", "ball": "Ball", "cylinder": "Cylinder"}
-                success = self.create_part_direct(shape=shape_map.get(shape, "Block"), color=color)
-            msg = f"יצרתי {shape}" + (f" {color}" if color else "") + "!"
-            return {"success": success, "action": "create", "message": msg}
+            # === יצירת צורה פשוטה (קוביה, כדור, גליל) ===
+            if shape != "cube" or "קוביה" in text_lower:
+                self.on_status(f"יוצר {shape} {color or ''}")
+                success = self.create_part(shape=shape, color=color)
+                if not success:
+                    shape_map = {"cube": "Block", "ball": "Ball", "cylinder": "Cylinder"}
+                    success = self.create_part_direct(shape=shape_map.get(shape, "Block"), color=color)
+                msg = f"יצרתי {shape}" + (f" {color}" if color else "") + "!"
+                return {"success": success, "action": "create", "message": msg}
 
-        # יצירת קוביה פשוטה עם צבע
-        if any(w in text_lower for w in ["תוסיף", "צור", "תיצור", "תעשה"]) and "קוביה" in text_lower:
-            self.on_status(f"יוצר cube {color or ''}")
-            success = self.create_part(shape="cube", color=color)
-            msg = f"יצרתי cube" + (f" {color}" if color else "") + "!"
-            return {"success": success, "action": "create", "message": msg}
+            # === אם יש מילת בנייה אבל לא זיהינו מה - נסה עם Claude ===
+            if self.llm_builder:
+                self.on_status(f"משתמש ב-Claude לפקודה: {text}")
+                lua_code = self.llm_builder.generate_lua(text)
+                if lua_code:
+                    success = self._send_command(lua_code)
+                    if success:
+                        return {"success": True, "action": "llm_build", "message": f"בניתי: {text}!"}
 
+        # === שלב 3: פעולות עריכה (רק אם לא פקודת בנייה!) ===
         # צביעה
-        if any(w in text_lower for w in ["צבע", "תצבע", "לצבוע"]):
+        if any(w in text_lower for w in COLOR_WORDS):
             if color:
                 self.on_status(f"צובע ב-{color}")
                 success = self.set_color(color)
@@ -366,26 +476,26 @@ print("✅ נוספו {count} {model_name}!")
             else:
                 return {"success": False, "error": "לא הבנתי איזה צבע. אמור למשל: תצבע באדום"}
 
-        # הגדלה - רק אם זו הפקודה העיקרית (לא "בית גדול")
-        elif any(w in text_lower for w in ["הגדל", "תגדיל", "יותר גדול"]) and not is_complex:
+        # הגדלה - רק אם יש מילת פעולה ספציפית (לא סתם "גדול")
+        if any(w in text_lower for w in RESIZE_BIGGER) and not is_build_command:
             self.on_status("מגדיל")
             success = self.make_bigger()
             return {"success": success, "action": "resize", "message": "הגדלתי פי 2!"}
 
-        # הקטנה - רק אם זו הפקודה העיקרית (לא "בית קטן")
-        elif any(w in text_lower for w in ["הקטן", "תקטין", "יותר קטן"]) and not is_complex:
+        # הקטנה - רק אם יש מילת פעולה ספציפית (לא סתם "קטן")
+        if any(w in text_lower for w in RESIZE_SMALLER) and not is_build_command:
             self.on_status("מקטין")
             success = self.make_smaller()
             return {"success": success, "action": "resize", "message": "הקטנתי לחצי!"}
 
         # מחיקה
-        elif any(w in text_lower for w in ["מחק", "תמחק", "הסר", "תסיר"]):
+        if any(w in text_lower for w in DELETE_WORDS):
             self.on_status("מוחק")
             success = self.delete_selected()
             return {"success": success, "action": "delete", "message": "מחקתי!"}
 
         # בחירת האחרון
-        elif any(w in text_lower for w in ["בחר", "תבחר", "select"]):
+        if any(w in text_lower for w in SELECT_WORDS):
             self.on_status("בוחר")
             success = self.select_last()
             return {"success": success, "action": "select", "message": "בחרתי!"}

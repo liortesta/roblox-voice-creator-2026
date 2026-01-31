@@ -1,0 +1,30 @@
+# Roblox Voice Creator - Dependencies
+# =====================================
+
+# AI APIs
+anthropic>=0.39.0      # Claude API with Computer Use
+openai>=1.54.0         # Whisper for speech recognition
+
+# Audio
+PyAudio>=0.2.14        # Audio recording (primary)
+sounddevice>=0.4.6     # Audio recording (alternative)
+numpy>=1.24.0          # Audio processing
+
+# GUI
+# tkinter is built-in with Python
+
+# Computer Control
+pyautogui>=0.9.54      # Mouse/keyboard automation
+Pillow>=10.0.0         # Screenshot capture
+
+# HTTP
+requests>=2.31.0       # HTTP requests (for OpenRouter)
+
+# Utilities
+python-dotenv>=1.0.0   # Environment variables
+
+# Optional: for better Windows support
+# pywin32>=306         # Windows-specific features
+
+# Development/Testing
+# pytest>=7.0.0        # Testing framework

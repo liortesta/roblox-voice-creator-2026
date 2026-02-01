@@ -3,12 +3,25 @@ Direct Roblox Controller - שליטה דרך HTTP Server
 =================================================
 שולח פקודות Lua דרך HTTP Server ל-Plugin ב-Roblox Studio.
 
-עכשיו עם תמיכה ב-LLM לפקודות מורכבות!
+גרסה 2.0 - עם תמיכה בסוכן חכם!
+- הבנת פקודות מורכבות
+- מעקב מצב העולם
+- תבניות משחק מוכנות
+- אלמנטים אינטראקטיביים
 """
 
 import requests
 import time
 from typing import Dict, Any, Optional
+
+# ניסיון לייבא את הסוכן החכם
+try:
+    from smart_agent import SmartAgent
+    SMART_AGENT_AVAILABLE = True
+except ImportError:
+    SMART_AGENT_AVAILABLE = False
+    print("אזהרה: Smart Agent לא זמין, משתמש בגרסה בסיסית")
+
 from llm_builder import LLMBuilder
 
 
@@ -159,16 +172,26 @@ class DirectRobloxController:
         "אבנים": 5765284230,
     }
 
-    def __init__(self, on_status=None):
+    def __init__(self, on_status=None, use_smart_agent=True):
         """
         אתחול.
 
         Args:
             on_status: callback להודעות סטטוס
+            use_smart_agent: האם להשתמש בסוכן החכם
         """
         self.on_status = on_status or (lambda x: print(f"[Controller] {x}"))
 
-        # LLM Builder לפקודות מורכבות
+        # סוכן חכם (גרסה 2.0)
+        self.smart_agent = None
+        if use_smart_agent and SMART_AGENT_AVAILABLE:
+            try:
+                self.smart_agent = SmartAgent(on_status=self.on_status)
+                self.on_status("🧠 סוכן חכם מוכן!")
+            except Exception as e:
+                self.on_status(f"סוכן חכם לא זמין: {e}")
+
+        # LLM Builder לפקודות מורכבות (fallback)
         try:
             self.llm_builder = LLMBuilder(on_status=self.on_status)
             self.on_status("LLM Builder מוכן לפקודות מורכבות!")
@@ -365,6 +388,25 @@ print("✅ נוספו {count} {model_name}!")
         text_lower = text_normalized.lower()
         self.on_status(f"מעבד: {text_normalized}")
 
+        # === ניסיון עם הסוכן החכם (גרסה 2.0) ===
+        if self.smart_agent:
+            # בדיקה אם זו פקודה למשחק/אינטראקציה
+            smart_keywords = [
+                "משחק", "מירוץ", "אובי", "פארקור", "איסוף",
+                "דלת", "כפתור", "טלפורט", "קפיצה", "נע",
+                "ליד", "מעל", "מתחת", "מאחורי", "מסביב"
+            ]
+            if any(kw in text_lower for kw in smart_keywords):
+                self.on_status("🧠 משתמש בסוכן חכם...")
+                result = self.smart_agent.execute(text_normalized)
+                if result.get("success") and result.get("lua_code"):
+                    success = self._send_command(result["lua_code"])
+                    return {
+                        "success": success,
+                        "action": result.get("intent", "smart"),
+                        "message": result.get("message", "בוצע!")
+                    }
+
         # זיהוי צבע
         color = None
         for heb, eng in self.COLORS.items():
@@ -525,6 +567,43 @@ print("✅ נוספו {count} {model_name}!")
                     "error": f"לא הבנתי את הפקודה: {text}",
                     "hint": "נסה: תוסיף קוביה, תצבע באדום, תגדיל, תמחק"
                 }
+
+
+    # ========================================
+    # פקודות חכמות נוספות
+    # ========================================
+
+    def create_game(self, game_type: str) -> Dict[str, Any]:
+        """יצירת משחק שלם."""
+        if self.smart_agent:
+            result = self.smart_agent.execute(f"צור משחק {game_type}")
+            if result.get("lua_code"):
+                success = self._send_command(result["lua_code"])
+                return {"success": success, "message": result.get("message")}
+        return {"success": False, "error": "סוכן חכם לא זמין"}
+
+    def create_interaction(self, interaction_type: str) -> Dict[str, Any]:
+        """יצירת אלמנט אינטראקטיבי."""
+        if self.smart_agent:
+            result = self.smart_agent.execute(f"צור {interaction_type}")
+            if result.get("lua_code"):
+                success = self._send_command(result["lua_code"])
+                return {"success": success, "message": result.get("message")}
+        return {"success": False, "error": "סוכן חכם לא זמין"}
+
+    def get_world_info(self) -> str:
+        """קבלת מידע על העולם."""
+        if self.smart_agent:
+            return self.smart_agent.get_world_summary()
+        return "סוכן חכם לא זמין"
+
+    def clear_world(self) -> bool:
+        """ניקוי העולם."""
+        lua_code = "VC.clearWorld()"
+        success = self._send_command(lua_code)
+        if self.smart_agent:
+            self.smart_agent.clear_world()
+        return success
 
 
 # ========================================

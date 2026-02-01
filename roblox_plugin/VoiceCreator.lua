@@ -350,8 +350,75 @@ button.Click:Connect(function()
     end
 end)
 
+-- ========================================
+-- פונקציות נוספות למערכת החכמה
+-- ========================================
+
+-- ניקוי העולם
+function VoiceCreator.clearWorld()
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("BasePart") or child:IsA("Model") then
+            if child.Name ~= "Baseplate" and child.Name ~= "Terrain" then
+                child:Destroy()
+            end
+        end
+    end
+    print("🧹 העולם נוקה!")
+end
+
+-- רשימת כל האובייקטים
+function VoiceCreator.listObjects()
+    local count = 0
+    print("📋 אובייקטים בעולם:")
+    for _, child in ipairs(workspace:GetChildren()) do
+        if child:IsA("BasePart") then
+            print("  - " .. child.Name .. " @ " .. tostring(child.Position))
+            count = count + 1
+        elseif child:IsA("Model") then
+            print("  - [Model] " .. child.Name)
+            count = count + 1
+        end
+    end
+    print("סה״כ: " .. count .. " אובייקטים")
+end
+
+-- שכפול נבחר
+function VoiceCreator.duplicate(offsetX, offsetY, offsetZ)
+    local selected = Selection:Get()
+    local newParts = {}
+    for _, obj in ipairs(selected) do
+        if obj:IsA("BasePart") then
+            local clone = obj:Clone()
+            clone.Position = obj.Position + Vector3.new(offsetX or 5, offsetY or 0, offsetZ or 0)
+            clone.Parent = workspace
+            table.insert(newParts, clone)
+        end
+    end
+    Selection:Set(newParts)
+    ChangeHistoryService:SetWaypoint("שכפול")
+    print("✅ שכפלתי " .. #newParts .. " אובייקטים")
+end
+
+-- סיבוב
+function VoiceCreator.rotate(degrees)
+    local selected = Selection:Get()
+    for _, obj in ipairs(selected) do
+        if obj:IsA("BasePart") then
+            obj.CFrame = obj.CFrame * CFrame.Angles(0, math.rad(degrees or 45), 0)
+        end
+    end
+    ChangeHistoryService:SetWaypoint("סיבוב")
+    print("✅ סובבתי " .. (degrees or 45) .. " מעלות")
+end
+
+-- הוספה ל-env
+_G.VC.clearWorld = VoiceCreator.clearWorld
+_G.VC.listObjects = VoiceCreator.listObjects
+_G.VC.duplicate = VoiceCreator.duplicate
+_G.VC.rotate = VoiceCreator.rotate
+
 -- הודעת טעינה
 print("=" .. string.rep("=", 50))
-print("🎤 Voice Creator Plugin נטען!")
+print("🎤 Voice Creator Plugin v2.0 - Smart Edition נטען!")
 print("לחץ על הכפתור ב-Toolbar להפעלה")
 print("=" .. string.rep("=", 50))

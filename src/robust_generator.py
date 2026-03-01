@@ -129,10 +129,10 @@ class RobustLuaGenerator:
         self.creation_count = 0
         self.failed_models = set()
 
-        # 2D Grid settings — פריסה כמו שכונה!
-        self.grid_columns = 5       # 5 אובייקטים בשורה
-        self.grid_spacing_x = 70    # רווח X בין אובייקטים
-        self.grid_spacing_z = 70    # רווח Z בין שורות
+        # 2D Grid settings — close together, easy to find!
+        self.grid_columns = 5       # 5 objects per row
+        self.grid_spacing_x = 35    # X spacing between objects
+        self.grid_spacing_z = 35    # Z spacing between rows
 
         # Claude Code CLI — free with Max plan!
         self.claude_cli_path = shutil.which("claude.cmd") or shutil.which("claude")

@@ -610,7 +610,7 @@ end
 function VoiceCreator.playBuildSound()
     pcall(function()
         local sound = Instance.new("Sound")
-        sound.SoundId = "rbxasset://sounds/electronicPing.wav"
+        sound.SoundId = "rbxassetid://9125402735"
         sound.Volume = 0.6
         sound.PlaybackSpeed = 1.2
         sound.Parent = workspace
@@ -626,14 +626,14 @@ end
 function VoiceCreator.playSuccessSound()
     pcall(function()
         local sound = Instance.new("Sound")
-        sound.SoundId = "rbxasset://sounds/electronicPing.wav"
+        sound.SoundId = "rbxassetid://9125402735"
         sound.Volume = 0.5
         sound.PlaybackSpeed = 1.5
         sound.Parent = workspace
         sound:Play()
         wait(0.15)
         local sound2 = Instance.new("Sound")
-        sound2.SoundId = "rbxasset://sounds/electronicPing.wav"
+        sound2.SoundId = "rbxassetid://9125402735"
         sound2.Volume = 0.5
         sound2.PlaybackSpeed = 2.0
         sound2.Parent = workspace

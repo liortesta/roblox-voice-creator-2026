@@ -1138,6 +1138,103 @@ HEBREW_OBJECTS = {
     "מירוץ": "race_track", "מסלול מירוץ": "race_track",
 }
 
+# English to preset mapping (for English voice commands)
+ENGLISH_OBJECTS = {
+    # Buildings
+    "house": "enterable_house", "simple house": "house", "home": "enterable_house",
+    "castle": "tower", "tower": "tower", "building": "tower",
+    # Vehicles
+    "car": "driveable_car", "vehicle": "driveable_car", "automobile": "driveable_car",
+    "simple car": "car", "basic car": "car",
+    "boat": "boat", "ship": "boat",
+    "helicopter": "helicopter", "chopper": "helicopter",
+    "airplane": "airplane", "plane": "airplane", "jet": "airplane",
+    # Nature
+    "tree": "tree", "big tree": "tree", "large tree": "tree",
+    "rock": "rock", "stone": "rock", "boulder": "rock",
+    "flower": "flower", "plant": "flower",
+    # Furniture
+    "table": "table", "desk": "table",
+    "chair": "chair", "seat": "chair",
+    "lamp": "lamp", "light": "lamp",
+    # Infrastructure
+    "bridge": "bridge",
+    "fountain": "fountain", "water fountain": "fountain",
+    "bench": "bench", "park bench": "bench",
+    "fence": "fence", "wall fence": "fence",
+    "street light": "street_light", "streetlight": "street_light", "lamp post": "street_light",
+    # Shapes
+    "platform": "platform", "stage": "platform",
+    "cube": "cube", "block": "cube", "box": "cube",
+    "ball": "ball", "sphere": "ball",
+    # Playground
+    "slide": "slide",
+    "swing": "swing",
+    # Fun
+    "pool": "pool", "swimming pool": "pool",
+    # Space
+    "rocket": "rocket", "missile": "rocket",
+    "spaceship": "spaceship", "space ship": "spaceship", "ufo": "spaceship",
+    # Sports
+    "soccer field": "soccer_field", "football field": "soccer_field", "soccer": "soccer_field",
+    # Animals
+    "dog": "dog", "puppy": "dog",
+    "cat": "cat", "kitten": "cat",
+    # Food
+    "cake": "cake", "birthday cake": "cake",
+    "ice cream": "ice_cream", "icecream": "ice_cream",
+    # Music
+    "guitar": "guitar",
+    "piano": "piano",
+    # Other
+    "star": "star",
+    # Interactive (v5.0)
+    "coin": "spinning_coin", "spinning coin": "spinning_coin",
+    "coin trail": "coin_trail", "coins": "coin_trail",
+    "trampoline": "trampoline", "bounce pad": "trampoline",
+    "lava": "lava_floor", "lava floor": "lava_floor",
+    "speed boost": "speed_boost", "speed pad": "speed_boost", "boost": "speed_boost",
+    "teleport": "teleporter", "teleporter": "teleporter", "portal": "teleporter",
+    "checkpoint": "checkpoint", "spawn point": "checkpoint", "save point": "checkpoint",
+    "spinning platform": "spinning_platform", "rotating platform": "spinning_platform",
+    "campfire": "fire_pit", "fire": "fire_pit", "bonfire": "fire_pit", "fireplace": "fire_pit",
+    # Game Systems (v5.0)
+    "leaderboard": "leaderboard", "scoreboard": "leaderboard", "score": "leaderboard",
+    "health pickup": "health_pickup", "heart": "health_pickup", "health": "health_pickup",
+    "kill brick": "kill_brick", "death brick": "kill_brick",
+    "moving platform": "moving_platform",
+    # NPCs (v6.0)
+    "guard": "guard_npc", "soldier": "guard_npc", "security": "guard_npc",
+    "enemy": "enemy_npc", "monster": "enemy_npc", "zombie": "enemy_npc",
+    "friend": "friendly_npc", "friendly npc": "friendly_npc", "npc": "friendly_npc", "character": "friendly_npc",
+    # Weather & Lighting (v6.0)
+    "rain": "rain",
+    "snow": "snow",
+    "night": "night", "dark": "night", "darkness": "night",
+    "sunset": "sunset",
+    "fog": "fog", "mist": "fog",
+    # Mini-games (v6.0)
+    "coin game": "coin_collector_game", "coin collector": "coin_collector_game", "collect coins": "coin_collector_game",
+    "race": "race_track", "race track": "race_track", "racing": "race_track",
+}
+
+# English color mapping
+ENGLISH_COLORS = {
+    "red": "Bright red",
+    "blue": "Bright blue",
+    "green": "Bright green",
+    "yellow": "Bright yellow",
+    "white": "White",
+    "black": "Black",
+    "brown": "Reddish brown",
+    "gray": "Medium stone grey", "grey": "Medium stone grey",
+    "orange": "Bright orange",
+    "pink": "Pink",
+    "purple": "Bright violet",
+    "cyan": "Light blue", "light blue": "Light blue",
+    "gold": "Gold", "golden": "Gold",
+}
+
 # Hebrew color mapping
 HEBREW_COLORS = {
     "אדום": "Bright red",
@@ -1157,7 +1254,7 @@ HEBREW_COLORS = {
 
 def get_blueprint_for_command(hebrew_text: str) -> Optional[BlueprintSpec]:
     """
-    Try to match Hebrew command to a preset blueprint.
+    Try to match Hebrew or English command to a preset blueprint.
     Returns None if no match found (needs LLM).
     """
     text_lower = hebrew_text.lower().strip()
@@ -1184,11 +1281,21 @@ def get_blueprint_for_command(hebrew_text: str) -> Optional[BlueprintSpec]:
 
     # Find object type — match LONGEST keys first to prefer specific matches
     object_type = None
+
+    # Try Hebrew objects first
     sorted_objects = sorted(HEBREW_OBJECTS.items(), key=lambda x: len(x[0]), reverse=True)
     for heb, eng in sorted_objects:
         if heb in filtered_text:
             object_type = eng
             break
+
+    # If no Hebrew match, try English objects
+    if not object_type:
+        sorted_english = sorted(ENGLISH_OBJECTS.items(), key=lambda x: len(x[0]), reverse=True)
+        for eng_word, preset_name in sorted_english:
+            if eng_word in filtered_text:
+                object_type = preset_name
+                break
 
     if not object_type or object_type not in PRESET_BLUEPRINTS:
         return None
@@ -1204,17 +1311,29 @@ def get_blueprint_for_command(hebrew_text: str) -> Optional[BlueprintSpec]:
         total_size=blueprint.total_size.copy()
     )
 
-    # Find color modification
+    # Find color modification — check Hebrew colors first, then English
+    color_found = False
     for heb_color, eng_color in HEBREW_COLORS.items():
         if heb_color in text_lower:
-            # Apply color to main parts (not windows, wheels, etc.)
             for part in result.parts:
                 if "window" not in part["name"] and "wheel" not in part["name"] and "glass" not in part.get("material", "").lower():
                     if part["name"] in ["body", "cabin", "cube", "ball", "foliage_1", "foliage_2", "foliage_3"]:
                         continue  # Skip specific parts
                     if "floor" in part["name"] or "wall" in part["name"] or "roof" in part["name"]:
                         part["color"] = eng_color
+            color_found = True
             break
+
+    if not color_found:
+        for color_word, eng_color in ENGLISH_COLORS.items():
+            if color_word in text_lower:
+                for part in result.parts:
+                    if "window" not in part["name"] and "wheel" not in part["name"] and "glass" not in part.get("material", "").lower():
+                        if part["name"] in ["body", "cabin", "cube", "ball", "foliage_1", "foliage_2", "foliage_3"]:
+                            continue
+                        if "floor" in part["name"] or "wall" in part["name"] or "roof" in part["name"]:
+                            part["color"] = eng_color
+                break
 
     return result
 

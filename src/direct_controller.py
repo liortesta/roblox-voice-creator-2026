@@ -183,10 +183,27 @@ class DirectRobloxController:
         # אפור
         "אפור": "Medium stone grey",
         "אפורה": "Medium stone grey",
+        # English colors
+        "red": "Bright red",
+        "blue": "Bright blue",
+        "green": "Bright green",
+        "yellow": "Bright yellow",
+        "orange": "Neon orange",
+        "purple": "Bright violet",
+        "pink": "Hot pink",
+        "white": "White",
+        "black": "Black",
+        "brown": "Brown",
+        "cyan": "Cyan",
+        "gold": "Gold",
+        "golden": "Gold",
+        "gray": "Medium stone grey",
+        "grey": "Medium stone grey",
     }
 
     # מיפוי צורות (עם וריאציות)
     SHAPES = {
+        # Hebrew
         "קוביה": "cube",
         "קובייה": "cube",
         "ריבוע": "cube",
@@ -194,6 +211,14 @@ class DirectRobloxController:
         "עיגול": "ball",
         "גליל": "cylinder",
         "צינור": "cylinder",
+        # English
+        "cube": "cube",
+        "block": "cube",
+        "box": "cube",
+        "ball": "ball",
+        "sphere": "ball",
+        "cylinder": "cylinder",
+        "tube": "cylinder",
     }
 
     # מודלים מוכנים מ-Toolbox (Asset IDs) - עם הרבה וריאציות!
@@ -465,10 +490,15 @@ print("✅ נוספו {count} {model_name}!")
 
         # === התעלם מביטויים שהם לא פקודות בנייה ===
         NOT_BUILD_COMMANDS = [
+            # Hebrew
             "תודה", "תודה רבה", "שלום", "היי", "הי", "ביי", "להתראות",
             "בוקר טוב", "ערב טוב", "לילה טוב", "מה נשמע", "מה קורה",
             "אוקי", "בסדר", "טוב", "יופי", "מעולה", "סבבה", "אחלה",
-            "כן", "לא", "אולי", "בטח", "נכון", "לא נכון"
+            "כן", "לא", "אולי", "בטח", "נכון", "לא נכון",
+            # English
+            "thanks", "thank you", "hello", "hi", "hey", "bye", "goodbye",
+            "good morning", "good evening", "good night", "how are you",
+            "okay", "ok", "yes", "no", "maybe", "sure", "great", "cool",
         ]
 
         # Check if it's just a greeting/thank you (not a build command)
@@ -483,6 +513,7 @@ print("✅ נוספו {count} {model_name}!")
 
         # === AI Chat mode — modify/script existing objects ===
         AI_CHAT_WORDS = [
+            # Hebrew
             "תשנה", "שנה את", "שנה סקריפט", "תעדכן", "עדכן את",
             "הוסף סקריפט", "תוסיף סקריפט", "שים סקריפט", "תשים סקריפט",
             "תעשה סקריפט", "עשה סקריפט",
@@ -490,6 +521,10 @@ print("✅ נוספו {count} {model_name}!")
             "שנה גודל", "תשנה גודל",
             "תעשה ש", "תגרום ל",
             "סרוק", "סרוק את המשחק",
+            # English
+            "change", "modify", "update", "edit script", "add script",
+            "change speed", "change color", "change size",
+            "make it", "edit", "scan", "scan the game",
         ]
         if any(w in text_lower for w in AI_CHAT_WORDS):
             self.on_status("AI Chat mode activated!")
@@ -497,6 +532,7 @@ print("✅ נוספו {count} {model_name}!")
 
         # === BEHAVIOR / LOGIC commands — "תוסיף ריצה", "תגרום לו לעקוב", etc. ===
         BEHAVIOR_TRIGGER_WORDS = [
+            # Hebrew
             "תוסיף ריצה", "תוסיף קפיצה", "תוסיף עפיפה", "תוסיף סיבוב",
             "תגרום ל", "שיעקוב", "שירוץ", "שיקפוץ", "שיעוף", "שיסתובב",
             "לרוץ", "לקפוץ", "לעוף", "לנהוג", "לעקוב", "לסייר",
@@ -517,6 +553,23 @@ print("✅ נוספו {count} {model_name}!")
             "פיצוץ", "מתפוצץ",
             "NPC", "npc", "דמות ש",
             "רכב ש", "מכונית ש",
+            # English
+            "add running", "add jumping", "add flying", "add rotation",
+            "make it run", "make it follow", "make it jump", "make it fly", "make it spin",
+            "add driving", "add patrol", "add patrolling",
+            "make door open", "click door", "add click",
+            "collect coin", "collectible",
+            "touch damage", "add healing",
+            "add teleport", "add trampoline", "add bounce",
+            "talking npc", "make it talk",
+            "enemy attack", "make it attack",
+            "add friendly", "friendly npc",
+            "add leaderboard", "add score", "add points",
+            "add checkpoint", "add spawn",
+            "add speed boost",
+            "death zone", "kill zone",
+            "add timer", "add countdown",
+            "add explosion", "make it explode",
         ]
         # === GAME SYSTEMS — "תוסיף מערכת חיים", "תעשה מירוץ", etc. ===
         if GAME_SYSTEMS_AVAILABLE:
@@ -537,8 +590,9 @@ print("✅ נוספו {count} {model_name}!")
             return self._execute_behavior_command(text)
 
         # === Context memory — "שפר", "הוסף עוד", "עוד" ===
-        IMPROVE_WORDS = ["שפר", "שדרג", "הוסף עוד", "תוסיף עוד", "תשפר", "תשדרג", "שפר את", "שדרג את"]
-        MORE_WORDS = ["עוד", "עוד אחד", "עוד פעם", "שוב"]
+        IMPROVE_WORDS = ["שפר", "שדרג", "הוסף עוד", "תוסיף עוד", "תשפר", "תשדרג", "שפר את", "שדרג את",
+                         "improve", "upgrade", "enhance", "add more", "make better"]
+        MORE_WORDS = ["עוד", "עוד אחד", "עוד פעם", "שוב", "more", "another", "again", "one more"]
 
         if any(w in text_lower for w in IMPROVE_WORDS) and self.last_build_context:
             last = self.last_build_context
@@ -554,6 +608,7 @@ print("✅ נוספו {count} {model_name}!")
 
         # === Short command recognition — just "בית!" without "בנה" ===
         SHORT_OBJECTS = {
+            # Hebrew
             "בית": "בנה בית", "עץ": "בנה עץ", "מכונית": "בנה מכונית",
             "מגדל": "בנה מגדל", "גשר": "בנה גשר", "מזרקה": "בנה מזרקה",
             "סירה": "בנה סירה", "מסוק": "בנה מסוק", "מטוס": "בנה מטוס",
@@ -572,6 +627,23 @@ print("✅ נוספו {count} {model_name}!")
             "דמות": "בנה דמות", "מפלצת": "בנה מפלצת", "זומבי": "בנה זומבי",
             "גשם": "בנה גשם", "שלג": "בנה שלג", "לילה": "בנה לילה",
             "שקיעה": "בנה שקיעה", "ערפל": "בנה ערפל",
+            # English short commands (just saying the object name)
+            "house": "build a house", "tree": "build a tree", "car": "build a car",
+            "tower": "build a tower", "bridge": "build a bridge", "fountain": "build a fountain",
+            "boat": "build a boat", "helicopter": "build a helicopter", "airplane": "build an airplane",
+            "chair": "build a chair", "table": "build a table", "dog": "build a dog",
+            "cat": "build a cat", "rocket": "build a rocket", "spaceship": "build a spaceship",
+            "cake": "build a cake", "ice cream": "build ice cream", "star": "build a star",
+            "castle": "build a castle", "pool": "build a pool",
+            "rock": "build a rock", "flower": "build a flower", "ball": "build a ball",
+            "slide": "build a slide", "lamp": "build a lamp", "fence": "build a fence",
+            # English interactive
+            "coin": "build a coin", "trampoline": "build a trampoline", "lava": "build lava",
+            "campfire": "build a campfire", "leaderboard": "build a leaderboard",
+            # English NPCs, Weather
+            "guard": "build a guard", "enemy": "build an enemy", "zombie": "build a zombie",
+            "rain": "build rain", "snow": "build snow", "night": "build night",
+            "sunset": "build sunset", "fog": "build fog",
         }
         clean_cmd = text_lower.strip().rstrip("!").rstrip("?").strip()
         if clean_cmd in SHORT_OBJECTS:
@@ -580,17 +652,36 @@ print("✅ נוספו {count} {model_name}!")
             self.on_status(f"Short command: '{clean_cmd}' -> '{text}'")
 
         # === Check if this looks like a BUILD command ===
-        BUILD_WORDS = ["בנה", "תבנה", "צור", "תצור", "תעשה", "עשה", "תוסיף", "הוסף", "שים", "תשים", "תן", "רוצה",
-                       "תגרום", "שיעשה", "שירוץ", "שיקפוץ", "שיעוף", "שיסתובב", "שיעקוב", "שיתקוף",
-                       "שידבר", "שינהג", "שיפוצץ"]
-        OBJECTS = ["בית", "עץ", "מכונית", "רכב", "מגדל", "עיר", "כביש", "גשר", "קוביה", "כדור",
-                   "גליל", "במה", "פלטפורמה", "אובי", "obby", "משחק", "גדר", "חומה", "דלת",
-                   "חלון", "גג", "רצפה", "קיר", "שולחן", "כיסא", "ספה", "מיטה", "ארון",
-                   "מטבע", "טרמפולינה", "לבה", "מהירות", "טלפורט", "מדורה", "לידרבורד",
-                   "לב", "חיים", "צ'קפוינט", "במה מסתובבת", "פורטל",
-                   "שומר", "אויב", "חבר", "דמות", "מפלצת", "זומבי", "חייל",
-                   "גשם", "שלג", "לילה", "שקיעה", "ערפל",
-                   "מירוץ", "משחק מטבעות"]
+        BUILD_WORDS = [
+            # Hebrew
+            "בנה", "תבנה", "צור", "תצור", "תעשה", "עשה", "תוסיף", "הוסף", "שים", "תשים", "תן", "רוצה",
+            "תגרום", "שיעשה", "שירוץ", "שיקפוץ", "שיעוף", "שיסתובב", "שיעקוב", "שיתקוף",
+            "שידבר", "שינהג", "שיפוצץ",
+            # English
+            "build", "create", "make", "add", "place", "put", "spawn", "generate", "construct",
+        ]
+        OBJECTS = [
+            # Hebrew
+            "בית", "עץ", "מכונית", "רכב", "מגדל", "עיר", "כביש", "גשר", "קוביה", "כדור",
+            "גליל", "במה", "פלטפורמה", "אובי", "obby", "משחק", "גדר", "חומה", "דלת",
+            "חלון", "גג", "רצפה", "קיר", "שולחן", "כיסא", "ספה", "מיטה", "ארון",
+            "מטבע", "טרמפולינה", "לבה", "מהירות", "טלפורט", "מדורה", "לידרבורד",
+            "לב", "חיים", "צ'קפוינט", "במה מסתובבת", "פורטל",
+            "שומר", "אויב", "חבר", "דמות", "מפלצת", "זומבי", "חייל",
+            "גשם", "שלג", "לילה", "שקיעה", "ערפל",
+            "מירוץ", "משחק מטבעות",
+            # English
+            "house", "tree", "car", "vehicle", "tower", "city", "road", "bridge", "cube", "ball",
+            "cylinder", "platform", "stage", "obby", "game", "fence", "wall", "door",
+            "window", "roof", "floor", "table", "chair", "sofa", "bed",
+            "coin", "trampoline", "lava", "speed boost", "teleport", "campfire", "leaderboard",
+            "heart", "health", "checkpoint", "spinning platform", "portal",
+            "guard", "enemy", "friend", "character", "monster", "zombie", "soldier",
+            "rain", "snow", "night", "sunset", "fog",
+            "race", "coin game", "boat", "helicopter", "airplane", "rocket", "spaceship",
+            "dog", "cat", "cake", "guitar", "piano", "star", "pool", "rock", "flower",
+            "lamp", "slide", "swing", "bench", "fountain", "street light",
+        ]
 
         has_build_word = any(w in text_lower for w in BUILD_WORDS)
         has_object = any(w in text_lower for w in OBJECTS)
@@ -601,26 +692,27 @@ print("✅ נוספו {count} {model_name}!")
             return {
                 "success": False,
                 "understood": text,
-                "message": "לא הבנתי. נסה: 'בנה בית' או 'צור עץ'",
-                "hint": "אמור מה לבנות"
+                "message": "I didn't understand. Try: 'build a house' or 'create a tree' / 'בנה בית' או 'צור עץ'",
+                "hint": "Say what to build / אמור מה לבנות"
             }
 
         # === Undo command ===
-        if any(w in text_lower for w in ["בטל", "חזור", "אנדו", "undo"]):
+        if any(w in text_lower for w in ["בטל", "חזור", "אנדו", "undo", "go back", "revert"]):
             self.on_status("Command: UNDO")
             return self._undo_last()
 
         # === Save/Load world ===
-        if any(w in text_lower for w in ["שמור עולם", "שמור את העולם", "שמור הכל"]):
+        if any(w in text_lower for w in ["שמור עולם", "שמור את העולם", "שמור הכל", "save world", "save everything"]):
             self.on_status("Command: SAVE WORLD")
             return self._save_world()
 
-        if any(w in text_lower for w in ["טען עולם", "טען את העולם", "שחזר עולם"]):
+        if any(w in text_lower for w in ["טען עולם", "טען את העולם", "שחזר עולם", "load world", "restore world"]):
             self.on_status("Command: LOAD WORLD")
             return self._load_world()
 
         # === Clear weather ===
-        if any(w in text_lower for w in ["נקה מזג אוויר", "נקה אוויר", "יום רגיל", "בטל מזג אוויר"]):
+        if any(w in text_lower for w in ["נקה מזג אוויר", "נקה אוויר", "יום רגיל", "בטל מזג אוויר",
+                                          "clear weather", "normal weather", "reset weather", "sunny"]):
             self.on_status("Command: CLEAR WEATHER")
             lua = "VC.clearWeather()"
             success = self._send_command(lua)
@@ -628,20 +720,20 @@ print("✅ נוספו {count} {model_name}!")
                     "message": "ניקיתי את מזג האוויר! ☀️"}
 
         # === פקודות עריכה פשוטות ===
-        if any(w in text_lower for w in ["מחק", "תמחק", "הסר"]):
+        if any(w in text_lower for w in ["מחק", "תמחק", "הסר", "delete", "remove", "erase"]):
             self.on_status("Command: DELETE")
             success = self.delete_selected()
-            return {"success": success, "understood": "מחיקה", "message": "מחקתי!"}
+            return {"success": success, "understood": "מחיקה / delete", "message": "Deleted!"}
 
-        if any(w in text_lower for w in ["הגדל", "תגדיל"]):
+        if any(w in text_lower for w in ["הגדל", "תגדיל", "bigger", "enlarge", "make bigger", "scale up"]):
             self.on_status("Command: BIGGER")
             success = self.make_bigger()
-            return {"success": success, "understood": "הגדלה", "message": "הגדלתי!"}
+            return {"success": success, "understood": "הגדלה / bigger", "message": "Made it bigger!"}
 
-        if any(w in text_lower for w in ["הקטן", "תקטין"]):
+        if any(w in text_lower for w in ["הקטן", "תקטין", "smaller", "shrink", "make smaller", "scale down"]):
             self.on_status("Command: SMALLER")
             success = self.make_smaller()
-            return {"success": success, "understood": "הקטנה", "message": "הקטנתי!"}
+            return {"success": success, "understood": "הקטנה / smaller", "message": "Made it smaller!"}
 
         # === בנייה - ה-AI מטפל ===
         self.on_status(f"BUILD: {text}")
@@ -681,25 +773,49 @@ print("✅ נוספו {count} {model_name}!")
         self.on_status("No preset behavior found, trying AI...")
         return self.ai_chat(text)
 
+    # Hebrew-to-English object name mapping for behavior targeting
+    HEBREW_TO_ENGLISH_TARGETS = {
+        "דמות": ["character", "npc", "humanoid", "dummy", "rig"],
+        "בנאדם": ["character", "npc", "humanoid", "dummy", "rig"],
+        "איש": ["character", "npc", "man", "person"],
+        "שחקן": ["player", "character"],
+        "חייל": ["soldier", "guard", "npc"],
+        "זומבי": ["zombie", "enemy"],
+        "אויב": ["enemy", "npc_attack", "zombie"],
+        "שומר": ["guard", "npc_guard", "soldier"],
+        "חבר": ["friend", "npc_friendly", "friendly"],
+        "מכונית": ["car", "driveable", "vehicle"],
+        "רכב": ["car", "driveable", "vehicle"],
+        "אוטו": ["car", "driveable", "vehicle"],
+        "בית": ["house", "enterable", "building"],
+        "דלת": ["door"],
+        "חלון": ["window"],
+        "כדור": ["ball", "sphere"],
+        "קוביה": ["cube", "block", "part"],
+        "עץ": ["tree"],
+        "סלע": ["rock", "stone"],
+        "מפלצת": ["monster", "enemy"],
+        "דרקון": ["dragon"],
+    }
+
     def _extract_behavior_target(self, text: str) -> Optional[str]:
-        """Extract target object name from behavior command."""
+        """Extract target object name from behavior command. Returns None to use selected object."""
         import re
 
         text_lower = text.lower()
 
-        # Known targets
-        known = [
-            "דמות", "בנאדם", "איש", "שחקן",
-            "NPC", "npc", "חייל", "זומבי", "אויב", "שומר", "חבר",
-            "מכונית", "רכב", "אוטו",
-            "בית", "דלת", "חלון",
-            "כדור", "קוביה", "עץ", "סלע",
-            "מפלצת", "דרקון",
-        ]
+        # Known Hebrew targets
+        known_hebrew = list(self.HEBREW_TO_ENGLISH_TARGETS.keys())
 
-        for obj in known:
+        for obj in known_hebrew:
             if obj in text_lower:
                 return obj
+
+        # Direct English names
+        english_names = ["NPC", "npc", "car", "house", "tree"]
+        for name in english_names:
+            if name.lower() in text_lower:
+                return name
 
         # Try "ל[name]" pattern
         match = re.search(r'ל(\S+)', text)
@@ -1060,9 +1176,9 @@ end
         }
 
     def _wrap_with_effects(self, lua_code: str, x: float = 0, z: float = 0) -> str:
-        """Wrap Lua code with build animation, sound, and camera fly-to."""
-        prefix = f"pcall(function() VC.playBuildSound() end)\npcall(function() VC.buildEffect({x}, 10, {z}) end)\n"
-        suffix = f"\npcall(function() VC.playSuccessSound() end)\npcall(function() VC.flyTo({x}, 10, {z}) end)"
+        """Wrap Lua code with build sound effect (no camera move)."""
+        prefix = f"pcall(function() VC.playBuildSound() end)\n"
+        suffix = f"\npcall(function() VC.playSuccessSound() end)"
         return prefix + lua_code + suffix
 
     def _remember_creation(self, object_name: str, blueprint_name: str, position: tuple = None):

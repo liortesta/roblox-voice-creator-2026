@@ -16,7 +16,8 @@ from typing import Dict, Any, Optional
 GAME_SYSTEMS = {
     "health": {
         "hebrew_names": ["חיים", "בריאות", "HP", "מערכת חיים"],
-        "description": "מערכת חיים עם leaderboard ו-respawn",
+        "english_names": ["health", "health system", "hp", "hit points", "health bar"],
+        "description": "מערכת חיים עם leaderboard ו-respawn / Health system with leaderboard and respawn",
         "lua": """
 -- === HEALTH SYSTEM ===
 local Players = game:GetService("Players")
@@ -89,7 +90,8 @@ print("✅ מערכת חיים הותקנה! (Health + Respawn)")
 
     "currency": {
         "hebrew_names": ["כסף", "מטבעות", "coins", "מערכת כסף", "כלכלה"],
-        "description": "מערכת מטבעות/כסף עם leaderboard",
+        "english_names": ["currency", "money", "coin system", "economy", "coins system"],
+        "description": "מערכת מטבעות/כסף עם leaderboard / Currency system with leaderboard",
         "lua": """
 -- === CURRENCY SYSTEM ===
 local currencyScript = Instance.new("Script")
@@ -152,7 +154,8 @@ print("✅ מערכת מטבעות הותקנה! (Coins + Score)")
 
     "coin_spawner": {
         "hebrew_names": ["מטבעות לאיסוף", "פזר מטבעות", "מטבעות באוויר"],
-        "description": "יוצר מטבעות מפוזרים שאפשר לאסוף",
+        "english_names": ["coin spawner", "spawn coins", "scatter coins", "collectible coins"],
+        "description": "יוצר מטבעות מפוזרים שאפשר לאסוף / Spawns collectible coins around the map",
         "lua": """
 -- === COIN SPAWNER ===
 local parts = {}
@@ -227,7 +230,8 @@ print("✅ " .. numCoins .. " מטבעות נפוזרו!")
 
     "race": {
         "hebrew_names": ["מירוץ", "מסלול מירוצים", "race", "תחרות"],
-        "description": "מערכת מירוץ עם התחלה וסוף",
+        "english_names": ["race", "race system", "racing", "race track", "race course", "competition"],
+        "description": "מערכת מירוץ עם התחלה וסוף / Race system with start and finish",
         "lua": """
 -- === RACE SYSTEM ===
 local parts = {}
@@ -315,7 +319,8 @@ print("✅ מסלול מירוצים מוכן! (Start → Finish)")
 
     "respawn": {
         "hebrew_names": ["רספאון", "respawn", "חזרה לחיים", "תחייה"],
-        "description": "מערכת respawn - חוזר לחיים אחרי מוות",
+        "english_names": ["respawn", "respawn system", "revive", "come back to life", "auto respawn"],
+        "description": "מערכת respawn - חוזר לחיים אחרי מוות / Respawn system - revive after death",
         "lua": """
 -- === RESPAWN SYSTEM ===
 local respawnScript = Instance.new("Script")
@@ -345,7 +350,8 @@ print("✅ מערכת Respawn הותקנה! (חוזר לחיים אחרי 3 שנ
 
     "day_night": {
         "hebrew_names": ["יום לילה", "מחזור יום", "day night", "שעות"],
-        "description": "מחזור יום-לילה אוטומטי",
+        "english_names": ["day night", "day night cycle", "time cycle", "day and night", "time of day"],
+        "description": "מחזור יום-לילה אוטומטי / Automatic day-night cycle",
         "lua": """
 -- === DAY/NIGHT CYCLE ===
 local Lighting = game:GetService("Lighting")
@@ -376,10 +382,10 @@ print("✅ מחזור יום/לילה פעיל!")
 
 def find_game_system(text: str) -> Optional[Dict[str, Any]]:
     """
-    Find matching game system for Hebrew command.
+    Find matching game system for Hebrew or English command.
 
     Args:
-        text: Hebrew text like "תוסיף מערכת חיים"
+        text: Text like "תוסיף מערכת חיים" or "add health system"
 
     Returns:
         System dict with lua code, or None
@@ -387,11 +393,22 @@ def find_game_system(text: str) -> Optional[Dict[str, Any]]:
     text_lower = text.lower().strip()
 
     for system_name, system in GAME_SYSTEMS.items():
+        # Check Hebrew names
         for hebrew_name in system["hebrew_names"]:
             if hebrew_name in text_lower:
                 return {
                     "name": system_name,
                     "hebrew": hebrew_name,
+                    "description": system["description"],
+                    "lua": system["lua"],
+                    "params": system.get("params", {}),
+                }
+        # Check English names
+        for english_name in system.get("english_names", []):
+            if english_name in text_lower:
+                return {
+                    "name": system_name,
+                    "hebrew": english_name,
                     "description": system["description"],
                     "lua": system["lua"],
                     "params": system.get("params", {}),
@@ -445,11 +462,18 @@ if __name__ == "__main__":
     print("=" * 60)
 
     tests = [
+        # Hebrew
         "תוסיף מערכת חיים",
         "תוסיף מטבעות",
         "תעשה מירוץ",
         "תוסיף respawn",
         "תעשה מחזור יום לילה",
+        # English
+        "add health system",
+        "add coin system",
+        "create a race",
+        "add respawn system",
+        "add day night cycle",
     ]
 
     for test in tests:

@@ -2,7 +2,7 @@
 
 # 🎙️ Roblox Voice Creator 2026
 
-### Build Roblox Games by Speaking — in Hebrew 🇮🇱
+### Build Roblox Games by Speaking — Hebrew 🇮🇱 & English 🇺🇸
 
 **The world's first voice-controlled Roblox game builder.**
 A 3-year-old can build a 3D game. No coding. No typing. Just speak.
@@ -15,11 +15,11 @@ A 3-year-old can build a 3D game. No coding. No typing. Just speak.
 
 <br>
 
-> **"בנה בית אדום גדול"** → A large red house appears in Roblox Studio
+> **"בנה בית אדום גדול"** / **"build a big red house"** → A large red house appears in Roblox Studio
 >
-> **"תוסיף ריצה לדמות"** → The character starts running with pathfinding AI
+> **"תוסיף ריצה לדמות"** / **"add running to character"** → The character starts running with pathfinding AI
 >
-> **"תעשה מערכת חיים"** → Full health system with GUI, damage, and respawn
+> **"תעשה מערכת חיים"** / **"add health system"** → Full health system with GUI, damage, and respawn
 
 <br>
 
@@ -222,7 +222,8 @@ roblox-voice-creator-2026/
 
 We're building the future of game creation. Here's what's next:
 
-- [ ] **English + Arabic support** — Voice commands in more languages
+- [x] **English support** — Full English voice commands (v8.1)
+- [ ] **Arabic support** — Voice commands in Arabic
 - [ ] **Animation system** — "תגרום לדמות לרקוד" (make the character dance)
 - [ ] **Terrain generation** — "תעשה הר עם שלג" (make a snowy mountain)
 - [ ] **Sound/Music system** — "תוסיף מוזיקה" (add background music)
@@ -283,7 +284,7 @@ Roblox Voice Creator is a step toward **democratizing game development**. Today 
 
 **Do I need to know Lua?** No. That's the whole point.
 
-**Does it work in English?** Currently Hebrew-only. English support is on the roadmap — PRs welcome!
+**Does it work in English?** Yes! Full English support was added in v8.1. Say "build a house" or "בנה בית" — both work.
 
 **Is it free?** Completely. MIT license. The only cost is optional API keys for AI features.
 
@@ -303,8 +304,10 @@ MIT License — see [LICENSE](LICENSE). Use it, fork it, build on it.
 
 🇮🇱 Made in Israel
 
+[![Twitter Follow](https://img.shields.io/twitter/follow/TestaLior?style=social)](https://x.com/TestaLior)
+
 If you think voice-controlled game building is the future — **⭐ Star this repo!**
 
-[Report Bug](https://github.com/liortesta/roblox-voice-creator-2026/issues) · [Request Feature](https://github.com/liortesta/roblox-voice-creator-2026/issues) · [Contribute](CONTRIBUTING.md)
+[Report Bug](https://github.com/liortesta/roblox-voice-creator-2026/issues) · [Request Feature](https://github.com/liortesta/roblox-voice-creator-2026/issues) · [Contribute](CONTRIBUTING.md) · [Twitter](https://x.com/TestaLior)
 
 </div>

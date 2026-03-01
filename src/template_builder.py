@@ -147,8 +147,19 @@ class TemplateBuilder:
 
         return lines
 
+    # Lua reserved words and built-in globals that must not be used as variable names
+    LUA_RESERVED = {
+        "and", "break", "do", "else", "elseif", "end", "false", "for",
+        "function", "if", "in", "local", "nil", "not", "or", "repeat",
+        "return", "then", "true", "until", "while",
+        # Built-in globals that get shadowed
+        "table", "string", "math", "print", "type", "pairs", "ipairs",
+        "error", "select", "next", "require", "tostring", "tonumber",
+        "game", "workspace", "script", "wait", "task", "spawn",
+    }
+
     def _to_var_name(self, name: str) -> str:
-        """Convert a name to a valid Lua variable name."""
+        """Convert a name to a valid Lua variable name (avoids reserved words)."""
         # Replace spaces and special chars with underscores
         var = name.lower().replace(" ", "_").replace("-", "_")
         # Remove any remaining invalid characters
@@ -156,7 +167,12 @@ class TemplateBuilder:
         # Ensure it starts with a letter
         if var and not var[0].isalpha():
             var = "part_" + var
-        return var or "part"
+        if not var:
+            var = "part"
+        # Avoid Lua reserved words by adding prefix
+        if var in self.LUA_RESERVED:
+            var = "obj_" + var
+        return var
 
     def _safe_string(self, s: str) -> str:
         """Make a string safe for Lua string literals."""

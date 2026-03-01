@@ -979,6 +979,17 @@ You build objects with REALISTIC PHYSICS and PROPORTIONS.
 CRITICAL - This code runs in a PLUGIN COMMAND SCRIPT, NOT a LocalScript!
 FORBIDDEN: LocalPlayer, PlayerGui, StarterPlayer, LocalScript, spawn(), task.spawn(), RunService, .Touched events
 
+VARIABLE NAME RULES (VERY IMPORTANT):
+- NEVER use "table" as a variable name! It conflicts with Lua's table.insert()
+- NEVER use Lua reserved words as variable names: string, math, print, type, pairs, game, workspace, script
+- Use descriptive names like "diningTable", "obj_table", "tableTop" instead
+- Same for "string" → "myString", "type" → "objType" etc.
+
+MODEL RULES:
+- Models do NOT have .Position property! Use model.PrimaryPart.Position or model:GetPivot().Position
+- To move a Model, use model:PivotTo(CFrame.new(x, y, z))
+- To get Model position: model:GetPivot().Position
+
 {position_hint}
 
 PHYSICS RULES (VERY IMPORTANT):

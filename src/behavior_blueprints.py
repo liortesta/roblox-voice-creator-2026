@@ -995,7 +995,7 @@ print("Vehicle is now driveable!")
 # ============================================
 
 HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
-    # תנועה
+    # תנועה (Hebrew)
     "ריצה": "run",
     "לרוץ": "run",
     "רץ": "run",
@@ -1024,7 +1024,7 @@ HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
     "ריחוף": "fly",
     "מרחף": "fly",
 
-    # אינטראקציות
+    # אינטראקציות (Hebrew)
     "דלת": "click_door",
     "נפתחת": "click_door",
     "פתיחה": "click_door",
@@ -1048,7 +1048,7 @@ HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
     "מתפוצץ": "explode",
     "להתפוצץ": "explode",
 
-    # NPC
+    # NPC (Hebrew)
     "מדבר": "npc_talk",
     "לדבר": "npc_talk",
     "שיחה": "npc_talk",
@@ -1062,7 +1062,7 @@ HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
     "חבר": "npc_friendly",
     "חברותי": "npc_friendly",
 
-    # מערכות משחק
+    # מערכות משחק (Hebrew)
     "לידרבורד": "leaderboard",
     "ניקוד": "leaderboard",
     "נקודות": "leaderboard",
@@ -1079,14 +1079,14 @@ HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
     "שעון": "timer",
     "ספירה": "timer",
 
-    # פיזיקה
+    # פיזיקה (Hebrew)
     "קופצני": "bounce",
     "מקפץ": "bounce",
     "סיבוב": "rotate_continuous",
     "מסתובב": "rotate_continuous",
     "להסתובב": "rotate_continuous",
 
-    # רכבים
+    # רכבים (Hebrew)
     "נהיגה": "driveable",
     "לנהוג": "driveable",
     "נוהג": "driveable",
@@ -1095,11 +1095,102 @@ HEBREW_BEHAVIOR_KEYWORDS: Dict[str, str] = {
     "ינסע": "driveable",
     "תנסע": "driveable",
 
-    # more NPC talk variants
+    # more NPC talk variants (Hebrew)
     "תדבר": "npc_talk",
-    "ידבר": "npc_talk",
     "דובר": "npc_talk",
     "מספר": "npc_talk",
+
+    # === ENGLISH KEYWORDS ===
+
+    # Movement (English)
+    "run": "run",
+    "running": "run",
+    "make it run": "run",
+    "follow": "follow_player",
+    "following": "follow_player",
+    "follow player": "follow_player",
+    "make it follow": "follow_player",
+    "patrol": "patrol",
+    "patrolling": "patrol",
+    "make it patrol": "patrol",
+    "jump": "jump",
+    "jumping": "jump",
+    "make it jump": "jump",
+    "fly": "fly",
+    "flying": "fly",
+    "make it fly": "fly",
+    "hover": "fly",
+    "hovering": "fly",
+
+    # Interactions (English)
+    "door": "click_door",
+    "click door": "click_door",
+    "open door": "click_door",
+    "openable door": "click_door",
+    "collect coin": "collect_coin",
+    "coin": "collect_coin",
+    "collectible": "collect_coin",
+    "damage": "touch_damage",
+    "hurt": "touch_damage",
+    "touch damage": "touch_damage",
+    "heal": "touch_heal",
+    "healing": "touch_heal",
+    "touch heal": "touch_heal",
+    "teleport": "teleport",
+    "teleporter": "teleport",
+    "trampoline": "trampoline",
+    "bounce": "trampoline",
+    "bouncy": "trampoline",
+    "explode": "explode",
+    "explosion": "explode",
+    "make it explode": "explode",
+
+    # NPC (English)
+    "talk": "npc_talk",
+    "talking": "npc_talk",
+    "talking npc": "npc_talk",
+    "make it talk": "npc_talk",
+    "attack": "npc_attack",
+    "attacking": "npc_attack",
+    "enemy attack": "npc_attack",
+    "make it attack": "npc_attack",
+    "friendly": "npc_friendly",
+    "friendly npc": "npc_friendly",
+    "make it friendly": "npc_friendly",
+
+    # Game Systems (English)
+    "leaderboard": "leaderboard",
+    "scoreboard": "leaderboard",
+    "score": "leaderboard",
+    "points": "leaderboard",
+    "checkpoint": "checkpoint",
+    "spawn point": "checkpoint",
+    "save point": "checkpoint",
+    "speed boost": "speed_boost",
+    "speed": "speed_boost",
+    "boost": "speed_boost",
+    "kill zone": "kill_zone",
+    "death zone": "kill_zone",
+    "lava": "kill_zone",
+    "spawn": "spawn_point",
+    "respawn": "spawn_point",
+    "timer": "timer",
+    "countdown": "timer",
+    "stopwatch": "timer",
+
+    # Physics (English)
+    "bouncy": "bounce",
+    "bounce": "bounce",
+    "rotate": "rotate_continuous",
+    "spin": "rotate_continuous",
+    "spinning": "rotate_continuous",
+    "make it spin": "rotate_continuous",
+
+    # Vehicles (English)
+    "drive": "driveable",
+    "driving": "driveable",
+    "driveable": "driveable",
+    "make it drive": "driveable",
 }
 
 
@@ -1205,18 +1296,62 @@ def generate_behavior_lua(behavior: BehaviorSpec, target_name: str = None,
     # Use [====[ ... ]====] to avoid conflicts with nested brackets
     escaped_source = script_source.replace("\\", "\\\\")
 
+    # Hebrew-to-English search terms for finding objects
+    SEARCH_ALIASES = {
+        "דמות": "character,npc,humanoid,dummy,rig",
+        "בנאדם": "character,npc,humanoid,dummy,rig",
+        "איש": "character,npc,man,person",
+        "שחקן": "player,character",
+        "חייל": "soldier,guard,npc",
+        "זומבי": "zombie,enemy",
+        "אויב": "enemy,npc_attack,zombie",
+        "שומר": "guard,npc_guard,soldier",
+        "חבר": "friend,npc_friendly,friendly",
+        "מכונית": "car,driveable,vehicle",
+        "רכב": "car,driveable,vehicle",
+        "אוטו": "car,driveable,vehicle",
+        "בית": "house,enterable,building",
+        "דלת": "door",
+        "חלון": "window",
+        "כדור": "ball,sphere",
+        "קוביה": "cube,block,part",
+        "עץ": "tree",
+        "סלע": "rock,stone",
+    }
+
+    search_terms = SEARCH_ALIASES.get(target_name, target_name) if target_name else ""
+
     # Build the Lua code
     if target_name:
-        # Target specific object
+        # Target specific object — search by Hebrew name AND English aliases
         find_code = f"""
-local target = workspace:FindFirstChild("{target_name}", true)
+local target = nil
+local searchTerms = {{"{target_name}", "{search_terms.replace(",", '","')}"}}
+-- First try exact match
+for _, term in ipairs(searchTerms) do
+    local found = workspace:FindFirstChild(term, true)
+    if found then target = found break end
+end
+-- Then try partial name match (case-insensitive)
 if not target then
-    -- Try to find by partial name match
     for _, child in pairs(workspace:GetDescendants()) do
-        if child.Name:lower():find("{target_name.lower()}") then
-            target = child
-            break
+        if child:IsA("Model") or child:IsA("BasePart") then
+            local nameLower = child.Name:lower()
+            for _, term in ipairs(searchTerms) do
+                if nameLower:find(term:lower()) then
+                    target = child
+                    break
+                end
+            end
+            if target then break end
         end
+    end
+end
+-- Last resort: use selected object
+if not target then
+    local selected = game.Selection:Get()
+    if selected and #selected > 0 then
+        target = selected[1]
     end
 end
 """
@@ -1224,7 +1359,7 @@ end
         # Use selected object
         find_code = """
 local selected = game.Selection:Get()
-local target = selected[1]
+local target = selected and selected[1] or nil
 """
 
     # Handle humanoid requirement

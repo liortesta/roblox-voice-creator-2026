@@ -18,6 +18,10 @@ CORS(app)  # מאפשר ל-Roblox לגשת
 pending_command = None
 command_lock = threading.Lock()
 
+# Workspace scan data (Roblox -> Python)
+workspace_scan = None
+scan_lock = threading.Lock()
+
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -49,6 +53,39 @@ def set_command():
         pending_command = data['command']
 
     return jsonify({"success": True, "command": data['command']})
+
+
+@app.route('/scan', methods=['POST'])
+def receive_scan():
+    """Roblox Plugin sends workspace scan data here."""
+    global workspace_scan
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing data"}), 400
+
+    with scan_lock:
+        workspace_scan = {
+            "objects": data.get("objects", []),
+            "timestamp": time.time()
+        }
+
+    count = len(workspace_scan["objects"])
+    return jsonify({"success": True, "received": count})
+
+
+@app.route('/scan', methods=['GET'])
+def get_scan():
+    """Python reads the latest workspace scan."""
+    with scan_lock:
+        if workspace_scan:
+            return jsonify({"hasScan": True, "scan": workspace_scan})
+        return jsonify({"hasScan": False})
+
+
+def get_workspace_scan():
+    """Get the latest workspace scan data (for use by other modules)."""
+    with scan_lock:
+        return workspace_scan
 
 
 def start_server(port=8080, on_status=None):

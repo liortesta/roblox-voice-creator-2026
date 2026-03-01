@@ -26,3 +26,34 @@ nul
 
 # Temp
 *.tmp
+
+# API Keys - NEVER commit these
+*api_key*
+*secret*
+credentials.*
+
+# Backups (local only)
+backup_*/
+
+# Claude Code
+.claude/
+.history/
+.lh/
+
+# Runtime data
+data/*.json
+
+# Working notes (not source)
+1.md
+AI_CONTEXT.md
+ARCHITECTURE.md
+CURRENT_STATE.md
+FULL_SYSTEM_DOCS.md
+HOW_TO_USE_SKILL.md
+PROJECT_SUMMARY.md
+QUICKSTART.md
+ROBLOX_SKILL.md
+START_HERE.md
+
+# Archives
+*.zip

@@ -6,7 +6,9 @@ LLM Builder - מייצר קוד Lua חכם מפקודות קוליות
 """
 
 import os
+import re
 import anthropic
+import requests
 from typing import Optional
 
 
@@ -205,27 +207,51 @@ game.Selection:Set(parts)
             api_key: Anthropic API key (או מ-ANTHROPIC_API_KEY)
             on_status: callback להודעות סטטוס
         """
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
-        if not self.api_key:
-            raise ValueError("חסר ANTHROPIC_API_KEY!")
-
-        self.client = anthropic.Anthropic(api_key=self.api_key)
         self.on_status = on_status or (lambda x: print(f"[LLM] {x}"))
+
+        # OpenRouter (ראשי - זול יותר!)
+        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if self.openrouter_key:
+            self.on_status("OpenRouter מוכן")
+
+        # Claude API (fallback)
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.client = None
+        if self.api_key:
+            try:
+                self.client = anthropic.Anthropic(api_key=self.api_key)
+            except:
+                pass
+
+        if not self.openrouter_key and not self.api_key:
+            raise ValueError("חסר OPENROUTER_API_KEY או ANTHROPIC_API_KEY!")
 
         # זיכרון שיחה - מה נוצר עד עכשיו
         self.conversation_history = []
         self.last_created = None  # תיאור מה נוצר לאחרונה
 
-    def generate_lua(self, command: str) -> Optional[str]:
+    def generate_lua(self, command: str, context: str = "") -> Optional[str]:
         """
         מייצר קוד Lua מפקודה בעברית עם זיכרון שיחה.
 
         Args:
             command: הפקודה בעברית (למשל "בנה בית אדום")
+            context: מצב העולם הנוכחי (מה כבר נבנה)
 
         Returns:
             קוד Lua או None אם נכשל
         """
+        # נסה קודם OpenRouter (זול יותר!)
+        if self.openrouter_key:
+            result = self._generate_with_openrouter(command, context)
+            if result:
+                return result
+
+        # Fallback ל-Claude
+        if not self.client:
+            self.on_status("אין API זמין!")
+            return None
+
         self.on_status(f"שולח ל-Claude: {command}")
 
         # בנה הודעות עם היסטוריה
@@ -237,7 +263,10 @@ game.Selection:Set(parts)
 
         # הוסף את הפקודה הנוכחית עם קונטקסט
         current_content = command
-        if self.last_created:
+        # Add world state context if available
+        if context and context != "העולם ריק כרגע.":
+            current_content = f"{context}\n\nפקודה חדשה: {command}"
+        elif self.last_created:
             current_content = f"[הקשר: יצרת קודם {self.last_created}]\n\nפקודה חדשה: {command}"
 
         messages.append({"role": "user", "content": current_content})
@@ -284,6 +313,131 @@ game.Selection:Set(parts)"""
 
         except Exception as e:
             self.on_status(f"שגיאה: {e}")
+            return None
+
+    def _clean_lua_code(self, content: str) -> Optional[str]:
+        """
+        מנקה קוד Lua מתוך תגובה - מסיר טקסט, הסברים ו-markdown.
+
+        Args:
+            content: התגובה המלאה מהמודל
+
+        Returns:
+            קוד Lua נקי בלבד, או None אם לא נמצא
+        """
+        content = content.strip()
+
+        # חפש קוד בתוך בלוק markdown (```lua או ```)
+        patterns = [
+            r'```lua\s*\n(.*?)```',      # ```lua ... ```
+            r'```luau\s*\n(.*?)```',     # ```luau ... ```
+            r'```\s*\n(.*?)```',          # ``` ... ```
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+            if match:
+                code = match.group(1).strip()
+                self.on_status(f"חולץ קוד מ-markdown ({len(code)} תווים)")
+                return code
+
+        # אם אין בלוק markdown, חפש קוד שמתחיל עם local parts
+        if "local parts" in content:
+            start_idx = content.find("local parts")
+            # מצא את הסוף
+            end_match = re.search(r'game\.Selection:Set\(parts\)', content[start_idx:])
+            if end_match:
+                end_idx = start_idx + end_match.end()
+                code = content[start_idx:end_idx].strip()
+                self.on_status(f"חולץ קוד ללא markdown ({len(code)} תווים)")
+                return code
+
+        # אם מתחיל ישירות עם local - כנראה קוד נקי
+        if content.startswith("local "):
+            return content
+
+        # לא נמצא קוד תקין
+        self.on_status("אזהרה: לא נמצא קוד Lua בתגובה")
+        return None
+
+    def _generate_with_openrouter(self, command: str, context: str = "") -> Optional[str]:
+        """
+        מייצר קוד Lua עם OpenRouter (DeepSeek).
+        """
+        self.on_status(f"שולח ל-OpenRouter: {command}")
+
+        current_content = command
+        # Add world state context if available
+        if context and context != "העולם ריק כרגע.":
+            current_content = f"{context}\n\nפקודה חדשה: {command}"
+        elif self.last_created:
+            current_content = f"[הקשר: יצרת קודם {self.last_created}]\n\nפקודה חדשה: {command}"
+
+        # פרומפט מחמיר יותר - באנגלית כדי שהמודל יבין טוב יותר
+        strict_system = """You are a Lua code generator for Roblox Studio.
+CRITICAL RULES:
+1. Output ONLY valid Lua code - NO explanations, NO Hebrew text!
+2. Start with: local parts = {}
+3. End with: game.Selection:Set(parts)
+4. Use Anchored = true
+5. Be creative with details (windows, doors, colors)
+
+RESPOND WITH PURE LUA CODE ONLY."""
+
+        messages = [
+            {"role": "system", "content": strict_system + "\n\n" + self.SYSTEM_PROMPT},
+            {"role": "user", "content": f"Generate Lua code for: {current_content}"}
+        ]
+
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.openrouter_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://roblox-voice-creator.local",
+                    "X-Title": "Roblox Voice Creator"
+                },
+                json={
+                    "model": "deepseek/deepseek-chat",
+                    "messages": messages,
+                    "max_tokens": 4000,
+                    "temperature": 0.7
+                },
+                timeout=60
+            )
+
+            if response.status_code != 200:
+                self.on_status(f"OpenRouter error: {response.status_code}")
+                return None
+
+            data = response.json()
+            raw_response = data["choices"][0]["message"]["content"].strip()
+
+            # נקה את הקוד - חלץ רק Lua
+            lua_code = self._clean_lua_code(raw_response)
+
+            if not lua_code:
+                return None
+
+            # בדיקה שזה באמת קוד Lua
+            lua_indicators = ["local ", "Instance.new", "workspace", "Vector3", "game.", "Part", "="]
+            is_lua = any(indicator in lua_code for indicator in lua_indicators)
+
+            if not is_lua:
+                self.on_status("OpenRouter לא החזיר קוד Lua תקין")
+                return None
+
+            # שמור בהיסטוריה
+            self.conversation_history.append({"role": "user", "content": command})
+            self.conversation_history.append({"role": "assistant", "content": lua_code[:500]})
+            self.last_created = command
+
+            self.on_status(f"התקבל קוד מ-OpenRouter ({len(lua_code)} תווים)")
+            return lua_code
+
+        except Exception as e:
+            self.on_status(f"OpenRouter error: {e}")
             return None
 
     def clear_history(self):

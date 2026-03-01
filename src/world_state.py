@@ -64,6 +64,101 @@ class WorldObject:
             (self.position[2] - other.position[2])**2
         )
 
+    def collides_with(self, other: 'WorldObject') -> bool:
+        """
+        בדיקת התנגשות AABB (Axis-Aligned Bounding Box) עם אובייקט אחר.
+
+        Returns:
+            True אם יש התנגשות
+        """
+        my_min, my_max = self.get_bounds()
+        other_min, other_max = other.get_bounds()
+
+        # בדיקת חפיפה בכל הצירים
+        overlap_x = my_min[0] <= other_max[0] and my_max[0] >= other_min[0]
+        overlap_y = my_min[1] <= other_max[1] and my_max[1] >= other_min[1]
+        overlap_z = my_min[2] <= other_max[2] and my_max[2] >= other_min[2]
+
+        return overlap_x and overlap_y and overlap_z
+
+    def would_collide_at(self, position: Tuple[float, float, float],
+                         other: 'WorldObject') -> bool:
+        """
+        בדיקת התנגשות אם האובייקט היה במיקום אחר.
+
+        Args:
+            position: המיקום לבדיקה
+            other: האובייקט האחר
+
+        Returns:
+            True אם היתה התנגשות במיקום החדש
+        """
+        # חשב גבולות במיקום החדש
+        half_size = (self.size[0]/2, self.size[1]/2, self.size[2]/2)
+        my_min = (
+            position[0] - half_size[0],
+            position[1] - half_size[1],
+            position[2] - half_size[2]
+        )
+        my_max = (
+            position[0] + half_size[0],
+            position[1] + half_size[1],
+            position[2] + half_size[2]
+        )
+
+        other_min, other_max = other.get_bounds()
+
+        overlap_x = my_min[0] <= other_max[0] and my_max[0] >= other_min[0]
+        overlap_y = my_min[1] <= other_max[1] and my_max[1] >= other_min[1]
+        overlap_z = my_min[2] <= other_max[2] and my_max[2] >= other_min[2]
+
+        return overlap_x and overlap_y and overlap_z
+
+    def get_collision_info(self, other: 'WorldObject') -> Optional[Dict[str, Any]]:
+        """
+        מידע מפורט על התנגשות עם אובייקט אחר.
+
+        Returns:
+            מידע על ההתנגשות או None אם אין התנגשות
+        """
+        if not self.collides_with(other):
+            return None
+
+        my_min, my_max = self.get_bounds()
+        other_min, other_max = other.get_bounds()
+
+        # חשב את נקודת החפיפה
+        overlap_min = (
+            max(my_min[0], other_min[0]),
+            max(my_min[1], other_min[1]),
+            max(my_min[2], other_min[2])
+        )
+        overlap_max = (
+            min(my_max[0], other_max[0]),
+            min(my_max[1], other_max[1]),
+            min(my_max[2], other_max[2])
+        )
+
+        # גודל החפיפה
+        overlap_size = (
+            overlap_max[0] - overlap_min[0],
+            overlap_max[1] - overlap_min[1],
+            overlap_max[2] - overlap_min[2]
+        )
+
+        return {
+            "collides": True,
+            "overlap_center": (
+                (overlap_min[0] + overlap_max[0]) / 2,
+                (overlap_min[1] + overlap_max[1]) / 2,
+                (overlap_min[2] + overlap_max[2]) / 2
+            ),
+            "overlap_size": overlap_size,
+            "overlap_volume": overlap_size[0] * overlap_size[1] * overlap_size[2],
+            "my_object": self.name,
+            "other_object": other.name
+        }
+
     def to_dict(self) -> dict:
         """המרה למילון."""
         d = asdict(self)
@@ -446,6 +541,259 @@ class WorldState:
             lines.append(f"\nהאובייקט האחרון שנוצר: {last.name}")
 
         return "\n".join(lines)
+
+    # ========================================
+    # פונקציות התנגשות
+    # ========================================
+
+    def check_collision_at_position(self, position: Tuple[float, float, float],
+                                    size: Tuple[float, float, float],
+                                    ignore_ids: List[str] = None) -> List[WorldObject]:
+        """
+        בדיקת התנגשות במיקום מסוים.
+
+        Args:
+            position: המיקום לבדיקה
+            size: גודל האובייקט
+            ignore_ids: אובייקטים להתעלם מהם
+
+        Returns:
+            רשימת אובייקטים מתנגשים
+        """
+        ignore_ids = ignore_ids or []
+        collisions = []
+
+        # צור אובייקט זמני לבדיקה
+        temp_obj = WorldObject(
+            id="temp",
+            name="temp",
+            object_type=ObjectType.CUSTOM,
+            position=position,
+            size=size
+        )
+
+        for obj_id, obj in self.objects.items():
+            if obj_id in ignore_ids:
+                continue
+            if temp_obj.collides_with(obj):
+                collisions.append(obj)
+
+        return collisions
+
+    def is_position_valid(self, position: Tuple[float, float, float],
+                          size: Tuple[float, float, float],
+                          ignore_ids: List[str] = None) -> bool:
+        """
+        בדיקה אם מיקום תקין (אין התנגשויות).
+
+        Args:
+            position: המיקום לבדיקה
+            size: גודל האובייקט
+            ignore_ids: אובייקטים להתעלם מהם
+
+        Returns:
+            True אם המיקום תקין
+        """
+        return len(self.check_collision_at_position(position, size, ignore_ids)) == 0
+
+    def find_valid_position(self, preferred_position: Tuple[float, float, float],
+                            size: Tuple[float, float, float],
+                            max_attempts: int = 50,
+                            search_radius: float = 50.0) -> Tuple[float, float, float]:
+        """
+        מציאת מיקום תקין הקרוב למיקום המועדף.
+
+        Args:
+            preferred_position: המיקום המועדף
+            size: גודל האובייקט
+            max_attempts: מספר ניסיונות מקסימלי
+            search_radius: רדיוס החיפוש
+
+        Returns:
+            מיקום תקין
+        """
+        # נסה קודם את המיקום המועדף
+        if self.is_position_valid(preferred_position, size):
+            return preferred_position
+
+        import random
+
+        x, y, z = preferred_position
+
+        # חפש בספירלה מתרחבת
+        for attempt in range(max_attempts):
+            # רדיוס הולך וגדל
+            radius = (attempt + 1) * (search_radius / max_attempts)
+
+            # נסה מספר כיוונים
+            for angle_step in range(8):
+                angle = (2 * math.pi * angle_step) / 8
+                test_x = x + radius * math.cos(angle)
+                test_z = z + radius * math.sin(angle)
+
+                test_pos = (test_x, y, test_z)
+
+                if self.is_position_valid(test_pos, size):
+                    self.on_status(f"נמצא מיקום תקין: {test_pos}")
+                    return test_pos
+
+        # אם לא מצאנו, החזר מיקום עם אופסט אקראי
+        fallback = (
+            x + random.uniform(-search_radius, search_radius),
+            y,
+            z + random.uniform(-search_radius, search_radius)
+        )
+        self.on_status(f"לא נמצא מיקום תקין, משתמש ב: {fallback}")
+        return fallback
+
+    def find_valid_position_near(self, reference: WorldObject,
+                                 relation: SpatialRelation,
+                                 size: Tuple[float, float, float],
+                                 offset: float = 5.0) -> Tuple[float, float, float]:
+        """
+        מציאת מיקום תקין ביחס לאובייקט אחר.
+
+        Args:
+            reference: אובייקט ההתייחסות
+            relation: היחס המרחבי
+            size: גודל האובייקט החדש
+            offset: מרחק מינימלי
+
+        Returns:
+            מיקום תקין
+        """
+        # חשב מיקום ראשוני
+        preferred = self.calculate_relative_position(reference, relation, offset)
+
+        # מצא מיקום תקין
+        return self.find_valid_position(preferred, size)
+
+    def get_objects_in_area(self, center: Tuple[float, float, float],
+                            radius: float) -> List[WorldObject]:
+        """
+        קבלת כל האובייקטים באזור.
+
+        Args:
+            center: מרכז האזור
+            radius: רדיוס החיפוש
+
+        Returns:
+            רשימת אובייקטים
+        """
+        result = []
+        for obj in self.objects.values():
+            dist = math.sqrt(
+                (obj.position[0] - center[0])**2 +
+                (obj.position[1] - center[1])**2 +
+                (obj.position[2] - center[2])**2
+            )
+            if dist <= radius:
+                result.append(obj)
+        return result
+
+    def get_objects_in_box(self, min_corner: Tuple[float, float, float],
+                           max_corner: Tuple[float, float, float]) -> List[WorldObject]:
+        """
+        קבלת כל האובייקטים בתיבה.
+
+        Args:
+            min_corner: פינה מינימלית
+            max_corner: פינה מקסימלית
+
+        Returns:
+            רשימת אובייקטים
+        """
+        result = []
+        for obj in self.objects.values():
+            # בדוק אם מרכז האובייקט בתיבה
+            in_box = (
+                min_corner[0] <= obj.position[0] <= max_corner[0] and
+                min_corner[1] <= obj.position[1] <= max_corner[1] and
+                min_corner[2] <= obj.position[2] <= max_corner[2]
+            )
+            if in_box:
+                result.append(obj)
+        return result
+
+    def get_all_collisions(self) -> List[Tuple[WorldObject, WorldObject]]:
+        """
+        מציאת כל ההתנגשויות הקיימות בעולם.
+
+        Returns:
+            רשימת זוגות אובייקטים מתנגשים
+        """
+        collisions = []
+        objects_list = list(self.objects.values())
+
+        for i, obj1 in enumerate(objects_list):
+            for obj2 in objects_list[i+1:]:
+                if obj1.collides_with(obj2):
+                    collisions.append((obj1, obj2))
+
+        return collisions
+
+    def resolve_collision(self, moving_obj: WorldObject,
+                          static_obj: WorldObject) -> Tuple[float, float, float]:
+        """
+        חישוב מיקום שיפתור התנגשות.
+
+        Args:
+            moving_obj: האובייקט שזז
+            static_obj: האובייקט הקבוע
+
+        Returns:
+            מיקום חדש לאובייקט הזז
+        """
+        collision_info = moving_obj.get_collision_info(static_obj)
+        if not collision_info:
+            return moving_obj.position
+
+        # מצא את הציר עם החפיפה הקטנה ביותר
+        overlap_size = collision_info["overlap_size"]
+        min_overlap_axis = overlap_size.index(min(overlap_size))
+
+        # הזז לאורך הציר עם החפיפה הקטנה ביותר
+        new_pos = list(moving_obj.position)
+
+        if min_overlap_axis == 0:  # X
+            if moving_obj.position[0] < static_obj.position[0]:
+                new_pos[0] -= overlap_size[0] + 1
+            else:
+                new_pos[0] += overlap_size[0] + 1
+        elif min_overlap_axis == 1:  # Y
+            if moving_obj.position[1] < static_obj.position[1]:
+                new_pos[1] -= overlap_size[1] + 1
+            else:
+                new_pos[1] += overlap_size[1] + 1
+        else:  # Z
+            if moving_obj.position[2] < static_obj.position[2]:
+                new_pos[2] -= overlap_size[2] + 1
+            else:
+                new_pos[2] += overlap_size[2] + 1
+
+        return tuple(new_pos)
+
+    def add_object_safe(self, obj: WorldObject) -> str:
+        """
+        הוספת אובייקט בצורה בטוחה - מזיז אם יש התנגשות.
+
+        Args:
+            obj: האובייקט להוספה
+
+        Returns:
+            מזהה האובייקט
+        """
+        # בדוק התנגשויות
+        collisions = self.check_collision_at_position(obj.position, obj.size)
+
+        if collisions:
+            # מצא מיקום תקין
+            new_pos = self.find_valid_position(obj.position, obj.size)
+            old_pos = obj.position
+            obj.position = new_pos
+            self.on_status(f"הזזתי {obj.name} מ-{old_pos} ל-{new_pos} כדי למנוע התנגשות")
+
+        return self.add_object(obj)
 
     def clear(self):
         """ניקוי העולם."""

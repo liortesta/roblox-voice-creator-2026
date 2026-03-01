@@ -11,13 +11,47 @@ Smart Agent System - מערכת סוכנים חכמה
 
 import os
 import re
+import sys
 import anthropic
 from typing import Optional, Dict, List, Any, Tuple
 from enum import Enum, auto
 
-from world_state import WorldState, WorldObject, ObjectType, SpatialRelation
-from script_generator import ScriptGenerator, InteractionType
-from game_templates import GameTemplates, GameType
+# תיקון קידוד Windows
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except:
+        pass
+
+
+def safe_print(text: str):
+    """הדפסה בטוחה שמתמודדת עם אימוג'י ב-Windows"""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        safe_text = text.encode('ascii', 'replace').decode('ascii')
+        print(safe_text)
+
+# Handle both package and direct imports
+try:
+    from .world_state import WorldState, WorldObject, ObjectType, SpatialRelation
+    from .script_generator import ScriptGenerator, InteractionType
+    from .game_templates import GameTemplates, GameType
+    from .agent_memory import AgentMemory, SharedAgentContext, MemoryType
+    from .complete_game_builder import CompleteGameBuilder, GameMode
+    from .openrouter_client import OpenRouterClient
+    from .robust_generator import RobustLuaGenerator
+    from .expert_agents import ExpertAgentSystem
+except ImportError:
+    from world_state import WorldState, WorldObject, ObjectType, SpatialRelation
+    from script_generator import ScriptGenerator, InteractionType
+    from game_templates import GameTemplates, GameType
+    from agent_memory import AgentMemory, SharedAgentContext, MemoryType
+    from complete_game_builder import CompleteGameBuilder, GameMode
+    from openrouter_client import OpenRouterClient
+    from robust_generator import RobustLuaGenerator
+    from expert_agents import ExpertAgentSystem
 
 
 class CommandIntent(Enum):
@@ -64,28 +98,126 @@ class SmartAgent:
         "צבע", "תצבע", "הגדל", "תגדיל", "הקטן", "תקטין"
     ]
 
-    def __init__(self, on_status=None):
+    def __init__(self, on_status=None, use_multi_agent: bool = None):
         """
         אתחול הסוכן החכם.
+
+        Args:
+            on_status: callback להודעות סטטוס
+            use_multi_agent: האם להשתמש במערכת מרובת סוכנים (OpenRouter)
         """
-        self.on_status = on_status or (lambda x: print(f"[SmartAgent] {x}"))
+        self.on_status = on_status or (lambda x: safe_print(f"[SmartAgent] {x}"))
 
         # מודולים
         self.world_state = WorldState(on_status=self.on_status)
         self.script_generator = ScriptGenerator(on_status=self.on_status)
         self.game_templates = GameTemplates(on_status=self.on_status)
 
-        # Claude API
+        # בדיקה אם להשתמש במערכת מרובת סוכנים
+        if use_multi_agent is None:
+            use_multi_agent = os.getenv("USE_MULTI_AGENT", "false").lower() == "true"
+
+        # מערכת מרובת סוכנים (OpenRouter)
+        self.multi_agent = None
+        if use_multi_agent and os.getenv("OPENROUTER_API_KEY"):
+            try:
+                from multi_agent import MultiAgentSystem
+                self.multi_agent = MultiAgentSystem(on_status=self.on_status)
+                self.on_status("מערכת מרובת סוכנים מוכנה (OpenRouter)")
+            except Exception as e:
+                self.on_status(f"מערכת מרובת סוכנים לא זמינה: {e}")
+
+        # מחולל חזק עם רוטציה בין מודלים (ראשי!)
+        self.robust_generator = None
+        if os.getenv("OPENROUTER_API_KEY"):
+            self.robust_generator = RobustLuaGenerator(on_status=self.on_status)
+            self.on_status("מחולל חזק מוכן (רוטציה בין מודלים)")
+
+        # OpenRouter (גיבוי)
+        self.openrouter = None
+        if os.getenv("OPENROUTER_API_KEY"):
+            self.openrouter = OpenRouterClient(on_status=self.on_status)
+            self.on_status("OpenRouter מוכן (גיבוי)")
+
+        # Claude API (fallback)
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.client = None
         if self.api_key:
             self.client = anthropic.Anthropic(api_key=self.api_key)
-            self.on_status("Claude API מוכן")
-        else:
-            self.on_status("אזהרה: אין Claude API key")
+            self.on_status("Claude API מוכן (fallback)")
+
+        if not self.openrouter and not self.client:
+            self.on_status("אזהרה: אין API key - הוסף OPENROUTER_API_KEY או ANTHROPIC_API_KEY")
 
         # היסטוריית שיחה
         self.conversation_history: List[Dict] = []
+
+        # מערכת זיכרון
+        self.shared_context = SharedAgentContext()
+        self.shared_context.set_world_state(self.world_state)
+        self.memory = self.shared_context.memory
+        self.on_status("מערכת זיכרון מוכנה")
+
+        # בונה משחקים מלא
+        self.game_builder = CompleteGameBuilder(on_status=self.on_status)
+        self.on_status("בונה משחקים מוכן")
+
+        # מערכת סוכנים מומחים
+        self.expert_system = None
+        if os.getenv("OPENROUTER_API_KEY"):
+            self.expert_system = ExpertAgentSystem(on_status=self.on_status)
+            self.on_status("סוכנים מומחים מוכנים (Builder, Logic, Game, UI)")
+
+    def _needs_experts(self, text: str) -> bool:
+        """בדיקה אם הבקשה דורשת סוכנים מומחים."""
+        text_lower = text.lower()
+
+        # מילות מפתח שמצריכות מערכת מומחים
+        expert_keywords = [
+            # לוגיקה וסקריפטים
+            "לוגיקה", "סקריפט", "קוד", "פונקציה", "אינטראקטיבי",
+            "לחיצה", "נגיעה", "טריגר", "אירוע",
+            # מערכות משחק
+            "חיים", "נקודות", "שלבים", "levels", "score", "health",
+            "ניצחון", "הפסד", "respawn", "checkpoint",
+            # GUI
+            "gui", "ממשק", "hud", "כפתור", "תפריט", "טקסט",
+            # משחקים מלאים
+            "משחק מלא", "משחק שלם", "עם לוגיקה", "פעיל"
+        ]
+
+        return any(kw in text_lower for kw in expert_keywords)
+
+    def _is_complex_request(self, text: str, intent: CommandIntent) -> bool:
+        """
+        בדיקה אם הבקשה מורכבת ודורשת מערכת מרובת סוכנים.
+
+        בקשות מורכבות:
+        - יצירת משחקים שלמים
+        - בקשות עם הרבה פרטים
+        - בקשות שדורשות עיצוב + לוגיקה
+        """
+        text_lower = text.lower()
+
+        # משחקים שלמים
+        if intent == CommandIntent.CREATE_GAME:
+            return True
+
+        # בקשות עם הרבה פרטים (מילים)
+        if len(text.split()) > 10:
+            return True
+
+        # מילות מפתח שמרמזות על מורכבות
+        complex_keywords = [
+            "עיר", "כפר", "עולם", "מפה",
+            "משחק", "שלב", "מסלול",
+            "עם לוגיקה", "עם סקריפט", "אינטראקטיבי",
+            "מלא", "שלם", "מורכב", "מפורט"
+        ]
+        if any(kw in text_lower for kw in complex_keywords):
+            return True
+
+        return False
 
     # ========================================
     # ניתוח פקודות
@@ -162,6 +294,33 @@ class SmartAgent:
         intent, info = self.analyze_command(text)
         self.on_status(f"כוונה: {intent.name}")
 
+        # בקשות שדורשות סוכנים מומחים (לוגיקה, GUI, משחקים מלאים)
+        if self.expert_system and self._needs_experts(text):
+            self.on_status("משתמש בסוכנים מומחים...")
+            full_context = self.shared_context.get_full_context()
+            result = self.expert_system.process(text, full_context)
+            if result.get("success"):
+                self._update_world_from_command(text)
+                self.memory.remember_conversation(text, "נוצר עם סוכנים מומחים")
+                self.memory.save()
+                return {
+                    "success": True,
+                    "lua_code": result.get("combined_code", ""),
+                    "message": f"נוצר עם סוכנים: {', '.join(result.get('messages', []))}",
+                    "agents_used": [c.get("agent") for c in result.get("codes", [])]
+                }
+
+        # בקשות מורכבות → מערכת מרובת סוכנים ישנה (אם זמינה)
+        if self.multi_agent and self._is_complex_request(text, intent):
+            self.on_status("משתמש במערכת מרובת סוכנים")
+            full_context = self.shared_context.get_full_context()
+            result = self.multi_agent.execute(text, full_context)
+            if result.get("success"):
+                self._update_world_from_command(text)
+                self.memory.remember_conversation(text, "נוצר עם מערכת מרובת סוכנים")
+                self.memory.save()
+                return result
+
         # טפל לפי כוונה
         if intent == CommandIntent.CREATE_GAME:
             return self._handle_game_creation(text, info)
@@ -188,7 +347,21 @@ class SmartAgent:
         """טיפול ביצירת משחק."""
         text_lower = text.lower()
 
-        # זיהוי סוג המשחק
+        # בדוק אם צריך משחק מלא עם לוגיקה
+        needs_full_game = any(w in text_lower for w in [
+            "חיים", "שלבים", "נקודות", "אויבים", "מלא", "שלם",
+            "עם לוגיקה", "lives", "levels", "score"
+        ])
+
+        if needs_full_game:
+            # השתמש בבונה משחקים מלא
+            self.on_status("בונה משחק מלא עם לוגיקה...")
+            result = self.game_builder.build_from_request(text)
+            if result.get("success"):
+                self._update_world_from_command(text)
+                return result
+
+        # זיהוי סוג המשחק - תבניות מהירות
         if any(w in text_lower for w in ["מירוץ", "רייסינג", "מכוניות"]):
             lua_code = self.game_templates.create_racing_game()
             game_name = "משחק מירוץ"
@@ -209,6 +382,22 @@ class SmartAgent:
         elif any(w in text_lower for w in ["פארק שעשועים", "גן שעשועים", "פארק משחקים"]):
             lua_code = self.game_templates.create_playground()
             game_name = "פארק שעשועים"
+
+        elif any(w in text_lower for w in ["הישרדות", "survival"]):
+            # משחק הישרדות מלא
+            result = self.game_builder.build_from_request(text)
+            if result.get("success"):
+                self._update_world_from_command(text)
+                return result
+            return self._generate_with_claude(text)
+
+        elif any(w in text_lower for w in ["הרפתקה", "adventure"]):
+            # משחק הרפתקה מלא
+            result = self.game_builder.build_from_request(text)
+            if result.get("success"):
+                self._update_world_from_command(text)
+                return result
+            return self._generate_with_claude(text)
 
         else:
             # ברירת מחדל - שלח ל-Claude
@@ -384,22 +573,82 @@ print("✅ המחיקה הושלמה")
     def _generate_with_claude(self, text: str, is_spatial: bool = False,
                               is_modification: bool = False) -> Dict[str, Any]:
         """
-        יצירת קוד Lua עם Claude.
+        יצירת קוד Lua - קודם מחולל חזק, אם נכשל OpenRouter, אז Claude.
         """
+        world_context = self.world_state.get_context_for_llm()
+
+        # 1. נסה קודם מחולל חזק עם רוטציה (הכי אמין!)
+        if self.robust_generator:
+            self.on_status("משתמש במחולל חזק (רוטציה בין מודלים)...")
+            result = self.robust_generator.generate(text, world_context)
+            if result.get("success"):
+                self.memory.learn_from_conversation(text)
+                self._update_world_from_command(text)
+                model_name = result.get("model", "Unknown")
+                self.memory.remember_conversation(text, f"נוצר עם {model_name}")
+                self.memory.save()
+                self.on_status(f"הצלחה עם {model_name}!")
+                return result
+            else:
+                self.on_status(f"מחולל חזק נכשל, מנסה גיבוי...")
+
+        # 2. נסה OpenRouter רגיל (גיבוי)
+        if self.openrouter:
+            self.on_status("מנסה OpenRouter...")
+            result = self.openrouter.generate_lua(text, world_context)
+            if result.get("success"):
+                self.memory.learn_from_conversation(text)
+                self._update_world_from_command(text)
+                self.memory.remember_conversation(text, f"נוצר עם OpenRouter")
+                self.memory.save()
+                return result
+
         if not self.client:
             return {
                 "success": False,
-                "error": "Claude API לא זמין",
-                "hint": "הגדר ANTHROPIC_API_KEY"
+                "error": "אין API זמין",
+                "hint": "הוסף OPENROUTER_API_KEY ל-.env (זול יותר!) או ANTHROPIC_API_KEY"
             }
 
-        # בנה את ההקשר
+        # למד מהשיחה
+        self.memory.learn_from_conversation(text)
+
+        # בנה את ההקשר - כולל זיכרון
         world_context = self.world_state.get_context_for_llm()
+        memory_context = self.memory.get_context_for_agents()
+
+        # בדוק מה נוצר אחרון - להקשר
+        last_obj = self.world_state.get_last_created()
+        context_hint = ""
+        if last_obj:
+            context_hint = f"""
+## הקשר חשוב - מה קיים בעולם:
+האובייקט האחרון שנוצר: {last_obj.name} במיקום ({last_obj.position[0]}, {last_obj.position[1]}, {last_obj.position[2]})
+
+## חוקי מיקום חכמים:
+- אם יש מסלול מירוץ והמשתמש מבקש מכונית - שים אותה על המסלול (Position.Y = 2, על הכביש)
+- אם יש מסלול והמשתמש מבקש קהל - שים אותם בצדדים (Z = 15 או Z = -15)
+- אם יש בית והמשתמש מבקש עץ - שים אותו ליד הבית (offset של 10-15)
+- אם יש עיר והמשתמש מבקש מכונית - שים אותה על הכביש
+- תמיד חשוב על ההקשר - איפה הגיוני לשים את האובייקט החדש ביחס למה שכבר קיים!
+"""
 
         system_prompt = f"""אתה סוכן חכם ליצירת משחקי Roblox. אתה מבין עברית ויוצר קוד Lua מקצועי.
+{context_hint}
 
 ## מצב העולם הנוכחי:
 {world_context}
+
+## זיכרון והקשר:
+{memory_context}
+
+## חשוב מאוד - מיקום חכם:
+כשאתה יוצר אובייקט חדש, תמיד תחשוב איפה הגיוני לשים אותו ביחס למה שכבר קיים!
+- מכונית חדשה + יש מסלול = שים על המסלול (Y=2, באזור X=10-20)
+- קהל/צופים + יש מסלול = שים בצדדים (Z=15 או Z=-15), לאורך המסלול
+- עץ + יש בית = שים ליד הבית (offset של 10-15)
+- חיילים/צבא + יש משהו = ארגן אותם בשורות מסודרות
+- אנשים/קהל = פזר אותם באזור הגיוני, לא אחד על השני
 
 ## כללים:
 1. החזר אך ורק קוד Lua תקין - בלי הסברים!
@@ -454,6 +703,13 @@ print("✅ המחיקה הושלמה")
                 "content": lua_code[:500]
             })
 
+            # עדכון מצב העולם - זכור מה נוצר
+            self._update_world_from_command(text)
+
+            # שמור שיחה בזיכרון
+            self.memory.remember_conversation(text, f"נוצר בהצלחה: {text[:100]}")
+            self.memory.save()
+
             return {
                 "success": True,
                 "lua_code": lua_code,
@@ -471,6 +727,96 @@ print("✅ המחיקה הושלמה")
     # ========================================
     # עדכון מצב העולם
     # ========================================
+
+    def _update_world_from_command(self, command: str):
+        """
+        עדכון מצב העולם לפי הפקודה שבוצעה.
+        מנתח את הפקודה ומזהה מה נוצר.
+        """
+        command_lower = command.lower()
+
+        # זיהוי סוג האובייקט שנוצר
+        obj_name = command  # ברירת מחדל - הפקודה עצמה
+        obj_type = ObjectType.CUSTOM
+        position = (0, 5, 0)  # ברירת מחדל
+        size = (10, 10, 10)
+
+        # מירוץ
+        if any(w in command_lower for w in ["מירוץ", "מסלול", "רייסינג"]):
+            obj_name = "מסלול מירוץ"
+            obj_type = ObjectType.ROAD
+            position = (100, 0.5, 0)  # אמצע המסלול
+            size = (200, 1, 20)
+
+        # עיר
+        elif any(w in command_lower for w in ["עיר", "עיירה", "כפר"]):
+            obj_name = "עיר"
+            obj_type = ObjectType.BUILDING
+            position = (0, 5, 0)
+            size = (100, 20, 100)
+
+        # בית
+        elif "בית" in command_lower:
+            obj_name = "בית"
+            obj_type = ObjectType.BUILDING
+            position = (0, 5, 0)
+            size = (20, 15, 20)
+
+        # מכונית
+        elif any(w in command_lower for w in ["מכונית", "רכב", "אוטו"]):
+            obj_name = "מכונית"
+            obj_type = ObjectType.VEHICLE
+            # אם יש מסלול, שים על המסלול
+            track = self.world_state.find_by_type(ObjectType.ROAD)
+            if track:
+                position = (10, 2, 0)  # על המסלול
+            else:
+                position = (0, 2, 0)
+            size = (6, 3, 4)
+
+        # קהל/אנשים
+        elif any(w in command_lower for w in ["קהל", "אנשים", "צופים"]):
+            obj_name = "קהל"
+            obj_type = ObjectType.CHARACTER
+            # אם יש מסלול, שים בצד
+            track = self.world_state.find_by_type(ObjectType.ROAD)
+            if track:
+                position = (50, 1, 20)  # בצד המסלול
+            else:
+                position = (0, 1, 10)
+            size = (30, 5, 5)
+
+        # עץ
+        elif "עץ" in command_lower:
+            obj_name = "עץ"
+            obj_type = ObjectType.NATURE
+            position = (10, 5, 0)
+            size = (4, 10, 4)
+
+        # צבא/חיילים
+        elif any(w in command_lower for w in ["צבא", "חיילים", "חייל"]):
+            obj_name = "צבא"
+            obj_type = ObjectType.CHARACTER
+            position = (0, 1, 0)
+            size = (20, 3, 10)
+
+        # הוסף לעולם בצורה בטוחה (ללא התנגשויות)
+        obj = WorldObject(
+            id="",
+            name=obj_name,
+            object_type=obj_type,
+            position=position,
+            size=size
+        )
+        obj_id = self.world_state.add_object_safe(obj)
+
+        # שמור בזיכרון
+        self.memory.remember_creation(
+            obj_name,
+            obj_type.value,
+            obj.position,
+            {"size": size, "command": command}
+        )
 
     def update_world_state(self, name: str, object_type: str,
                           position: Tuple[float, float, float],
@@ -524,10 +870,13 @@ print("✅ המחיקה הושלמה")
         """קבלת סיכום העולם."""
         return self.world_state.get_context_for_llm()
 
-    def clear_world(self):
+    def clear_world(self, clear_memory: bool = False):
         """ניקוי העולם."""
         self.world_state.clear()
         self.conversation_history.clear()
+        if clear_memory:
+            self.memory.clear()
+            self.on_status("הזיכרון נוקה")
 
     def save_world(self, filepath: str):
         """שמירת העולם."""
